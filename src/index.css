@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Base Mountain Frost / Light Alpine Palette */
+:root {
+  --bg-primary: #f0fdf9;      /* Crisp mountain frost / light sage */
+  --bg-card: #ffffff;         /* Clean white card surface */
+  --bg-subtle: #e6f7f2;       /* Tinted cyan-mint highlight */
+  --border-color: #cbd5e1;    /* Clean slate border */
+  --text-primary: #0f172a;    /* High-contrast dark charcoal text */
+  --text-muted: #475569;      /* Slate secondary text */
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #f1f8f6;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Ensure Leaflet blends cleanly without dark borders */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  background: #dcfce7 !important;
+}
+
+/* Frosted light popups */
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #94a3b8 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15) !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+}
+
+.leaflet-popup-content {
+  margin: 8px 12px !important;
+}

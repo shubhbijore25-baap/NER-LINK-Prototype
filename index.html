@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NER-LINK — Logistics & Accessibility Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --mist:#ECF0ED; --paper:#FAFBF9; --ink:#0F2530; --ink2:#52666E; --line:#D6DED9;
+  --river:#0B6A7A; --river-soft:#DCEDEF; --tea:#2F7A45; --tea-soft:#E0F0E4;
+  --ochre:#B9720F; --ochre-soft:#FBEBD0; --alert:#C8372D; --alert-soft:#FADFDB; --deep:#0D2B36;
+  --f-head:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'Public Sans','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:var(--f-body);background:var(--mist);color:var(--ink);font-size:14px;line-height:1.45;display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid #37B7C6;outline-offset:2px}
+
+/* ---------- header ---------- */
+.top{background:var(--deep);color:#E7F0EE;display:flex;align-items:center;gap:28px;padding:0 24px;height:64px;flex:none}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:34px;height:34px}
+.brand h1{font:700 21px var(--f-head);letter-spacing:.02em;line-height:1}
+.brand p{font-size:12px;color:#9FB8B8;margin-top:3px}
+.tabs{display:flex;gap:4px;height:100%;margin-left:12px}
+.tabs button{background:none;border:0;padding:0 16px;height:100%;color:#9FB8B8;font-weight:500;position:relative}
+.tabs button:hover{color:#fff}
+.tabs button.on{color:#fff}
+.tabs button.on::after{content:'';position:absolute;left:12px;right:12px;bottom:0;height:3px;background:#37E2D5;border-radius:3px 3px 0 0}
+.tools{margin-left:auto;display:flex;align-items:center;gap:12px}
+.lang{display:flex;background:#163A47;border-radius:9px;padding:3px}
+.lang button{border:0;background:none;color:#9FB8B8;padding:4px 10px;border-radius:7px;font-size:12px;font-weight:600}
+.lang button.on{background:#E7F0EE;color:var(--deep)}
+.btn-demo{background:#37E2D5;color:#06303A;border:0;border-radius:10px;padding:8px 14px;font-weight:600;display:flex;gap:8px;align-items:center}
+.btn-demo.run{background:#FFB43C}
+.live{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#BFE9DD;background:#123845;border-radius:999px;padding:6px 12px}
+.live.off i{background:#FFB43C;animation:none}
+.live i{width:8px;height:8px;border-radius:50%;background:#43D17E;animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* ---------- views ---------- */
+.view{display:none;flex:1;min-height:0;padding:16px 24px 20px;overflow:auto}
+.view.on{display:flex;flex-direction:column;gap:16px}
+#view-cc{overflow:hidden}
+
+/* ---------- KPI strip ---------- */
+.kpis{display:grid;grid-template-columns:1.25fr repeat(5,1fr);background:var(--paper);border:1px solid var(--line);border-radius:14px;flex:none}
+.kpi{padding:14px 18px;border-left:1px solid var(--line)}
+.kpi:first-child{border-left:0}
+.kpi .n{font:700 30px var(--f-head);line-height:1.1;letter-spacing:-.01em}
+.kpi .l{font-size:12.5px;color:var(--ink2);margin-top:2px}
+.kpi.acc .bar{height:5px;background:var(--line);border-radius:5px;margin-top:8px;overflow:hidden}
+.kpi.acc .bar i{display:block;height:100%;background:var(--tea);border-radius:5px;transition:width .9s ease,background .4s}
+.kpi.warn .n{color:var(--ochre)} .kpi.bad .n{color:var(--alert)}
+
+/* ---------- command center ---------- */
+.cc-grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 396px;gap:16px}
+.mapwrap{position:relative;border-radius:18px;overflow:hidden;background:var(--deep);border:1px solid #0a2029;min-height:420px}
+#map{position:absolute;inset:0;background:#0d2b36}
+#map.dim .leaflet-tile-pane{filter:brightness(.74) saturate(.9)}
+.ov{position:absolute;z-index:900}
+.scen{top:14px;left:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 340px)}
+.seg{display:flex;background:rgba(13,43,54,.92);border-radius:12px;padding:4px;backdrop-filter:blur(6px)}
+.seg button{background:none;border:0;color:#B9D3D2;padding:7px 12px;border-radius:9px;font-weight:500;font-size:13px;white-space:nowrap}
+.seg button:hover{color:#fff}
+.seg button.on{background:#E7F0EE;color:var(--deep)}
+.seg button.on.s1{background:#FFB43C}
+.seg button.on.s2{background:#FF6B5E;color:#fff}
+.seg button.on.s3{background:#C8372D;color:#fff}
+.tr{top:14px;right:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.wx{background:rgba(250,251,249,.96);border-radius:12px;padding:9px 13px;display:flex;gap:12px;align-items:center;font-size:12.5px}
+.wx b{font:700 18px var(--f-head)}
+.wx span{color:var(--ink2)}
+.legend{right:14px;bottom:96px;background:rgba(13,43,54,.92);color:#D8E7E6;border-radius:12px;padding:10px 12px;font-size:12px;display:grid;gap:5px}
+.legend div{display:flex;align-items:center;gap:8px}
+.legend i{width:22px;height:5px;border-radius:3px}
+.track{left:14px;bottom:14px;width:340px;background:rgba(250,251,249,.97);border-radius:14px;padding:14px 16px}
+.tr-head{display:flex;justify-content:space-between;align-items:center}
+.tr-head b{font:700 17px var(--f-head)}
+.tr-cargo{color:var(--ink2);margin-top:2px}
+.tr-route{display:flex;align-items:center;gap:8px;margin:10px 0 8px;font-weight:600}
+.tr-route svg{width:16px;height:16px;color:var(--ink2)}
+.prog{height:6px;background:var(--line);border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--river);border-radius:6px}
+.tr-stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px}
+.tr-stats b{display:block;font:700 19px var(--f-head)}
+.tr-stats span{font-size:12px;color:var(--ink2)}
+.tr-status{margin-top:10px;font-size:12.5px;color:var(--river);font-weight:600;display:flex;gap:6px;align-items:center}
+.tr-status.hold{color:var(--ochre)}
+
+.badge{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px}
+.badge.critical{background:var(--alert-soft);color:var(--alert)}
+.badge.high{background:var(--ochre-soft);color:var(--ochre)}
+.badge.normal{background:var(--tea-soft);color:var(--tea)}
+
+/* map markers */
+.city{position:relative;width:0;height:0}
+.city i{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(13,43,54,.7)}
+.city b{position:absolute;left:9px;top:-9px;font:600 12px var(--f-body);color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap}
+.veh{position:relative;width:0;height:0;--c:#3DBE6B}
+.veh.critical{--c:#FF4A55}.veh.high{--c:#FFB43C}
+.veh .dot{position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.55)}
+.veh.critical .dot::after{content:'';position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--c);animation:ping 1.7s ease-out infinite}
+.veh .tag{position:absolute;left:16px;top:-13px;background:var(--deep);color:#fff;font:600 11.5px var(--f-body);padding:3px 8px;border-radius:7px;white-space:nowrap;display:none}
+.veh:hover .tag,.veh.sel .tag{display:block}
+.veh.sel .dot{width:24px;height:24px;left:-12px;top:-12px}
+.veh.air .dot{background:#fff;border-color:#37E2D5;display:grid;place-items:center}
+@keyframes ping{from{transform:scale(.6);opacity:.9}to{transform:scale(1.9);opacity:0}}
+.hz{position:relative;width:0;height:0}
+.hz .core{position:absolute;left:-15px;top:-15px;width:30px;height:30px;border-radius:50%;background:#FF2D2D;border:3px solid #fff;display:grid;place-items:center;color:#fff;font:700 16px var(--f-head);box-shadow:0 2px 12px rgba(0,0,0,.6)}
+.hz.warn .core{background:#FF7A2E}
+.hz.warn::after{border-color:#FF7A2E}
+.hz::after{content:'';position:absolute;left:-30px;top:-30px;width:60px;height:60px;border-radius:50%;border:2px solid #FF2D2D;animation:ping 1.5s ease-out infinite}
+path.flow{stroke-dasharray:12 10;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-22}}
+.leaflet-container{font-family:var(--f-body)}
+
+/* ---------- side column ---------- */
+.side{display:flex;flex-direction:column;gap:14px;overflow-y:auto;min-height:0;padding-right:2px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{font:700 16px var(--f-head)}
+.card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--tea-soft);color:var(--tea)}
+.pill.warn{background:var(--ochre-soft);color:var(--ochre)} .pill.bad{background:var(--alert-soft);color:var(--alert)}
+#brief{border-left:5px solid var(--tea)}
+#brief.s1{border-left-color:var(--ochre)} #brief.s2{border-left-color:var(--alert)}
+.lead{font:600 17px/1.3 var(--f-head)}
+.sub{color:var(--ink2);margin-top:4px}
+.watch{margin-top:12px;display:grid;gap:9px}
+.watch div{display:grid;grid-template-columns:1fr 34px;gap:4px 10px;align-items:center;font-size:13px}
+.watch .b{grid-column:1/-1;height:5px;border-radius:5px;background:var(--line);overflow:hidden}
+.watch .b i{display:block;height:100%;background:var(--ochre)}
+.steps{list-style:none;padding:0;margin:0;position:relative}
+.steps li{position:relative;padding:0 0 12px 24px;animation:in .35s ease both}
+.steps li::before{content:'';position:absolute;left:5px;top:7px;bottom:-4px;width:2px;background:var(--line)}
+.steps li:last-child::before{display:none}
+.steps li::after{content:'';position:absolute;left:0;top:5px;width:12px;height:12px;border-radius:50%;background:var(--river);border:3px solid var(--paper);box-shadow:0 0 0 2px var(--river)}
+.steps li.r::after{background:var(--alert);box-shadow:0 0 0 2px var(--alert)}
+.steps b{display:block}
+.steps span{color:var(--ink2);font-size:13px}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}
+.decide{background:var(--mist);border-radius:12px;padding:12px 14px;margin-top:4px;animation:in .4s ease both}
+.decide h3{font:700 14px var(--f-head);margin-bottom:8px}
+.cmp{width:100%;border-collapse:collapse;font-size:13px}
+.cmp td{padding:6px 0;border-top:1px solid var(--line)}
+.cmp td:last-child,.cmp td:nth-child(2){text-align:right}
+.cmp .x{color:var(--alert);font-weight:600}.cmp .ok{color:var(--tea);font-weight:600}
+.note{font-size:12.5px;color:var(--ink2);margin-top:8px}
+.btn{background:var(--river);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:600;width:100%;margin-top:12px}
+.btn:hover{background:#095866}
+.btn.done{background:var(--tea-soft);color:var(--tea);cursor:default}
+.btn.alt{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.q{list-style:none;padding:0;display:grid}
+.q li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}
+.q li:first-child{border-top:0}
+.q li:hover,.q li.sel{background:var(--river-soft)}
+.q b{font-weight:600}.q span{color:var(--ink2);font-size:12.5px}
+.q .e{text-align:right}
+.feed{list-style:none;padding:0;display:grid;gap:2px}
+.fi{display:grid;grid-template-columns:44px 1fr;gap:8px;padding:9px 0;border-top:1px solid var(--line)}
+.fi:first-child{border-top:0}
+.fi .t{color:var(--ink2);font-size:12.5px}
+.fi p{color:var(--ink2);font-size:13px}
+.fi b::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:var(--tea)}
+.fi.sev3 b::before{background:#E0A020}.fi.sev4 b::before,.fi.sev5 b::before{background:var(--alert)}
+.fi.new{animation:in .5s ease both;background:linear-gradient(90deg,var(--alert-soft),transparent)}
+
+/* ---------- field report ---------- */
+.fr{display:grid;grid-template-columns:minmax(0,620px) minmax(0,1fr);gap:16px;align-items:start}
+.form label.f{display:block;font-weight:600;margin:16px 0 8px}
+.form label.f:first-of-type{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:8px 14px;font-weight:500}
+.chips button.on{background:var(--deep);color:#fff;border-color:var(--deep)}
+.sevs button{width:52px;height:44px;border-radius:10px}
+.sevs button.on{background:var(--alert);border-color:var(--alert)}
+select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font:inherit;color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+.net{display:flex;align-items:center;justify-content:space-between;background:var(--mist);border-radius:12px;padding:10px 14px;margin-bottom:16px}
+.sw{position:relative;width:46px;height:26px;border-radius:26px;border:0;background:#43D17E}
+.sw::after{content:'';position:absolute;top:3px;left:23px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s}
+.sw.off{background:#A8B5B1}.sw.off::after{left:3px}
+.hint{font-size:12.5px;color:var(--ink2)}
+.qbox{background:var(--ochre-soft);border-radius:12px;padding:12px 14px;margin-bottom:14px;color:#6b4306}
+.qbox b{display:block}
+.file{display:flex;gap:10px;align-items:center;margin-top:12px}
+.file button{border:1px dashed #9FB2AB;background:none;border-radius:10px;padding:9px 14px}
+
+/* ---------- route intelligence ---------- */
+.ri-top{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.ri-top h2{font:700 22px var(--f-head)}
+.ri-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.rc{position:relative}
+.rc.rec{border:2px solid var(--river)}
+.rc.closed{background:#F6EBE9}
+.rc .rt{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.rc h3{font:700 18px var(--f-head)}
+.rc .big{font:700 44px var(--f-head);line-height:1;margin-top:10px}
+.facts{display:flex;gap:22px;margin:10px 0 14px;color:var(--ink2)}
+.facts b{display:block;color:var(--ink);font:700 17px var(--f-head)}
+.fac{display:grid;grid-template-columns:90px 1fr 32px;gap:10px;align-items:center;margin:6px 0;font-size:13px}
+.fac .b{height:7px;background:var(--line);border-radius:7px;overflow:hidden}
+.fac .b i{display:block;height:100%;border-radius:7px}
+.strip{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:14px}
+.strip i{height:16px;border-radius:3px}
+.verdict{background:var(--deep);color:#E7F0EE;border-radius:14px;padding:16px 20px;font:600 17px/1.35 var(--f-head)}
+.verdict span{display:block;font:400 13.5px var(--f-body);color:#9FB8B8;margin-top:4px}
+.why{list-style:none;padding:0;display:grid;gap:9px}
+.why li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:13.5px;line-height:1.4}
+.why i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--f-body);font-style:normal;color:#fff;background:var(--tea)}
+.why i.b{background:var(--alert)}.why i.w{background:var(--ochre)}.why i.n{background:var(--ink2)}
+.decide .why{margin-top:8px}
+.badge.closed{background:#C8372D;color:#fff}.badge.hr{background:#FCE3D0;color:#8A3D0C}
+.hz.t-flood .core{background:#2F80ED}.hz.t-flood::after{border-color:#2F80ED}
+.hz.t-slide .core{background:#B5651D}.hz.t-slide::after{border-color:#B5651D}
+.hz.t-bridge .core{background:#D63031;border-radius:8px}.hz.t-bridge::after{border-color:#D63031;border-radius:12px}
+.hz.t-vis .core{background:#6B7B84}.hz.t-vis::after{border-color:#6B7B84}
+.legend .m{width:14px;height:14px;border-radius:50%;flex:none}
+.wb{padding:10px 0;border-top:1px solid var(--line)}.wb:first-of-type{border-top:0;padding-top:0}
+.wbh .why li{font-size:14px}
+.wb ul{margin:6px 0 0 30px;padding:0;color:var(--ink2);font-size:13.5px}.wb ul li{margin:2px 0}
+.bd{display:grid;grid-template-columns:118px 1fr 46px;gap:10px;align-items:center;margin:5px 0;font-size:13px}
+.bd .b{height:7px;background:var(--line);border-radius:7px;overflow:hidden}.bd .b i{display:block;height:100%;border-radius:7px}
+.bd b{text-align:right;font-weight:600}
+.forced{font-size:12.5px;color:var(--alert);background:var(--alert-soft);border-radius:8px;padding:8px 10px;margin-top:10px;font-weight:500}
+.mainf{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}.mainf span{font-size:12px;background:var(--mist);border-radius:999px;padding:3px 10px}
+.act{margin-top:12px;font-size:13.5px;padding:10px 12px;border-radius:10px;background:var(--mist)}
+.verdict.nofeas{background:#7E1F18;color:#fff}.verdict.nofeas span{color:#F3C7C2}
+.nf-h{font:700 28px var(--f-head);letter-spacing:.01em}
+.nf-meta{display:flex;gap:28px;flex-wrap:wrap;margin:10px 0 4px;font:400 14px var(--f-body)}
+.nf-meta b{display:block;font:600 15px var(--f-body);color:#fff}
+.nf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.nf-route{background:rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;font:400 14px/1.5 var(--f-body)}
+.nf-route h4{font:700 16px var(--f-head);margin-bottom:4px}
+.verdict.nofeas .nf-route .s{display:inline-block;background:#fff;color:#7E1F18;font:700 11.5px var(--f-body);border-radius:999px;padding:2px 9px;margin:0 0 0 8px}
+.nf-acts{margin:6px 0 0;padding-left:22px;font:400 14.5px/1.6 var(--f-body)}
+.clr{display:grid;gap:14px}
+.clr-i{border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kvs{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;font-size:13.5px;margin:10px 0}.kvs span{color:var(--ink2)}.kvs b{font-weight:600}.kvs b.ok{color:var(--tea)}
+.demo-tag{font-size:11px;font-weight:700;background:var(--ochre-soft);color:var(--ochre);border-radius:6px;padding:2px 7px;margin-left:8px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btnrow .btn{width:auto;flex:1;min-width:150px;margin-top:0}
+.btn.red{background:var(--alert)}.btn.red:hover{background:#A82D25}.btn:disabled{opacity:.6;cursor:default}
+.modal{position:fixed;inset:0;background:rgba(9,25,32,.6);display:none;place-items:center;z-index:4000}.modal.on{display:grid}
+.md{background:var(--paper);border-radius:16px;padding:22px;width:min(560px,92vw);max-height:90vh;overflow:auto}
+.md h3{font:700 19px var(--f-head);margin-bottom:6px}.md h3.ok{color:var(--tea)}
+.nf-contact{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;margin-top:10px;font:400 14px/1.5 var(--f-body)}
+.verdict.nofeas .nf-contact .ph{display:inline;color:#fff;font-weight:600;margin:0}
+.btn.nfb{background:#fff;color:#7E1F18;min-width:0;padding:9px 14px}.btn.nfb:hover{background:#F3C7C2}
+@media (max-width:1100px){.nf-grid,.nf-contact{grid-template-columns:1fr}}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);background:var(--deep);color:#fff;padding:12px 16px;border-radius:12px;display:flex;gap:14px;align-items:center;opacity:0;pointer-events:none;transition:.3s;z-index:3000;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{background:#37E2D5;color:#06303A;border:0;border-radius:8px;padding:6px 12px;font-weight:600}
+
+@media (max-width:1100px){
+  body{overflow:auto}
+  #view-cc{overflow:visible}
+  .cc-grid{grid-template-columns:1fr}
+  .mapwrap{height:70vh}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpi{border-top:1px solid var(--line)}
+  .fr,.ri-cards{grid-template-columns:1fr}
+  .top{flex-wrap:wrap;height:auto;padding:10px 16px;gap:10px}
+  .tabs{order:3;width:100%;margin:0;height:44px}
+  .scen{max-width:calc(100% - 28px)} .tr{display:none}
+  .track{width:calc(100% - 28px)} .legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#163A47"/><path d="M5 30 14 15l6 8 5-7 10 14" stroke="#37E2D5" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="14" cy="15" r="2.6" fill="#FFB43C"/><circle cx="25" cy="16" r="2.6" fill="#fff"/></svg>
+    <div><h1>NER-LINK</h1><p>Logistics &amp; Accessibility Intelligence — North Eastern Region</p></div>
+  </div>
+  <nav class="tabs" aria-label="Views">
+    <button class="on" data-tab="cc" data-i18n="nav_cc">Command Center</button>
+    <button data-tab="fr" data-i18n="nav_fr">Field Report</button>
+    <button data-tab="ri" data-i18n="nav_ri">Route Intelligence</button>
+  </nav>
+  <div class="tools">
+    <div class="lang" role="group" aria-label="Language">
+      <button class="on" data-l="en">EN</button><button data-l="hi">HI</button><button data-l="as">AS</button>
+    </div>
+    <button class="btn-demo" id="demoBtn"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg><span data-i18n="demo">Run demo</span></button>
+    <div class="live"><i></i><span data-i18n="live">Live simulation</span></div>
+    <div class="live off" id="apiChip" title="Connection to the FastAPI backend"><i></i><span>Backend: checking…</span></div>
+  </div>
+</header>
+
+<!-- ===================== COMMAND CENTER ===================== -->
+<section class="view on" id="view-cc">
+  <div class="kpis" id="kpis">
+    <div class="kpi"><div class="n" id="k-veh">0</div><div class="l" data-i18n="kpi_vehicles">Active vehicles</div></div>
+    <div class="kpi"><div class="n" id="k-del">0</div><div class="l" data-i18n="kpi_deliveries">Deliveries in progress</div></div>
+    <div class="kpi"><div class="n" id="k-crit">0</div><div class="l" data-i18n="kpi_critical">Critical deliveries</div></div>
+    <div class="kpi acc" id="kc-acc"><div class="n"><span id="k-acc">0</span>%</div><div class="l" data-i18n="kpi_access">Accessible corridors</div><div class="bar"><i id="k-accbar" style="width:0"></i></div></div>
+    <div class="kpi warn"><div class="n" id="k-high">0</div><div class="l" data-i18n="kpi_highrisk">High-risk corridors</div></div>
+    <div class="kpi bad"><div class="n" id="k-blk">0</div><div class="l" data-i18n="kpi_blocked">Blocked corridors</div></div>
+  </div>
+
+  <div class="cc-grid">
+    <div class="mapwrap">
+      <div id="map" class="dim"></div>
+
+      <div class="ov scen">
+        <div class="seg" id="scen" role="group" aria-label="Scenario">
+          <button class="on" data-s="n" data-i18n="scen0">Normal day</button>
+          <button data-s="rain" data-i18n="scen_rain">Heavy rain</button>
+          <button data-s="slide" data-i18n="scen1">Landslide on NH-6</button>
+          <button data-s="cut" data-i18n="scen2">Road network cut</button>
+        </div>
+      </div>
+
+      <div class="ov tr">
+        <div class="seg" id="layers" role="group" aria-label="Map layer">
+          <button class="on" data-ly="sat">Satellite</button><button data-ly="terrain">Terrain</button><button data-ly="dark">Dark</button>
+        </div>
+        <div class="wx"><b>28°C</b><div><div id="wx1">Guwahati · Moderate rain</div><span id="wx2">60 mm forecast (24h) · 3 corridors on watch</span></div></div>
+      </div>
+
+      <div class="ov legend" aria-label="Corridor risk legend">
+        <div><i style="background:#43D17E"></i>Safe (below 40)</div>
+        <div><i style="background:#FFB43C"></i>Watch (40–69)</div>
+        <div><i style="background:#FF7A2E"></i>High risk (70–89)</div>
+        <div><i style="background:repeating-linear-gradient(90deg,#FF2D2D 0 5px,transparent 5px 9px)"></i>Closed (90+)</div>
+        <div><i class="m" style="background:#FF2D2D"></i>Incident / blockage</div>
+        <div><i class="m" style="background:#2F80ED"></i>Flood</div>
+        <div><i class="m" style="background:#B5651D"></i>Landslide</div>
+        <div><i class="m" style="background:#D63031;border-radius:4px"></i>Bridge damage</div>
+      </div>
+
+      <div class="ov track" id="track">
+        <div class="tr-head"><b id="tr-id">—</b><span class="badge" id="tr-prio"></span></div>
+        <div class="tr-cargo" id="tr-cargo"></div>
+        <div class="tr-route"><span id="tr-from"></span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8h11M9 4l4 4-4 4"/></svg><span id="tr-to"></span></div>
+        <div class="prog"><i id="tr-bar"></i></div>
+        <div class="tr-stats">
+          <div><b id="tr-kmh">0</b><span>km/h</span></div>
+          <div><b id="tr-left">0</b><span>km left</span></div>
+          <div><b id="tr-eta">—</b><span>ETA</span></div>
+        </div>
+        <div class="tr-status" id="tr-status"></div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card" id="brief"></div>
+      <div class="card">
+        <div class="card-h"><h2 data-i18n="queue_title">Delivery priority</h2></div>
+        <ul class="q" id="queue"></ul>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2 data-i18n="feed_title">Field updates</h2></div>
+        <ul class="feed" id="feed"></ul>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ===================== FIELD REPORT ===================== -->
+<section class="view" id="view-fr">
+  <div class="fr">
+    <div class="card form">
+      <div class="card-h"><h2>Report a road condition</h2></div>
+      <div class="net">
+        <div><b id="netLabel">Online</b><div class="hint" id="netHint">Reports reach the control room instantly.</div></div>
+        <button class="sw" id="netSw" aria-label="Toggle offline mode"></button>
+      </div>
+      <label class="f">What happened?</label>
+      <div class="chips" id="fr-type"></div>
+      <label class="f" for="fr-place">Where?</label>
+      <select id="fr-place"></select>
+      <label class="f">How serious?</label>
+      <div class="chips sevs" id="fr-sev"></div>
+      <div class="hint" style="margin-top:6px">1 = minor delay · 5 = road impassable</div>
+      <label class="f" for="fr-note">Details (optional)</label>
+      <textarea id="fr-note" placeholder="Example: Debris across both lanes, JCB needed."></textarea>
+      <div class="file"><button type="button" id="fr-photo">Add photo</button><span class="hint" id="fr-photoName">No photo attached</span></div>
+      <button class="btn" id="fr-send">Send report</button>
+    </div>
+    <div style="display:grid;gap:14px">
+      <div class="card" id="qcard" style="display:none">
+        <div class="card-h"><h2>Waiting to sync</h2><span class="pill warn" id="qcount">0</span></div>
+        <ul class="feed" id="qlist"></ul>
+        <button class="btn" id="syncBtn">Sync now</button>
+      </div>
+      <div class="card" id="procCard" style="display:none"></div>
+      <div class="card"><div class="card-h"><h2>Recent reports</h2></div><ul class="feed" id="feed2"></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ROUTE INTELLIGENCE ===================== -->
+<section class="view" id="view-ri">
+  <div class="ri-top">
+    <h2>Guwahati → Aizawl</h2>
+    <div class="seg" id="cargoSeg" style="background:var(--deep)" role="group" aria-label="Cargo priority">
+      <button data-p="critical" class="on">Critical cargo</button><button data-p="high">High priority</button><button data-p="normal">Normal cargo</button>
+    </div>
+    <span class="hint">Critical cargo weighs safety more than speed. Risk here follows Field Reports and the rainfall forecast.</span>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div class="card" id="whyCard"></div>
+  <div class="ri-cards" id="riCards"></div>
+  <div class="card" id="clearCard" style="display:none"></div>
+</section>
+
+<div class="modal" id="modal"><div class="md" id="mdBody"></div></div>
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastBtn" style="display:none"></button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* =========================================================
+   NER-LINK — demo front-end (simulated GPS, weather, reports)
+   ========================================================= */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ---------- i18n (UI labels) ---------- */
+const T={
+ en:{nav_cc:'Command Center',nav_fr:'Field Report',nav_ri:'Route Intelligence',live:'Live simulation',demo:'Run demo',stop:'Stop demo',
+     kpi_vehicles:'Active vehicles',kpi_deliveries:'Deliveries in progress',kpi_critical:'Critical deliveries',kpi_access:'Accessible corridors',kpi_highrisk:'High-risk corridors',kpi_blocked:'Blocked corridors',
+     scen0:'Normal day',scen_rain:'Heavy rain',scen1:'Landslide on NH-6',scen2:'Road network cut',brief_title:'AI decision brief',queue_title:'Delivery priority',feed_title:'Field updates'},
+ hi:{nav_cc:'कमांड सेंटर',nav_fr:'फील्ड रिपोर्ट',nav_ri:'रूट इंटेलिजेंस',live:'लाइव सिमुलेशन',demo:'डेमो चलाएं',stop:'डेमो रोकें',
+     kpi_vehicles:'सक्रिय वाहन',kpi_deliveries:'चल रही डिलीवरी',kpi_critical:'अति-आवश्यक डिलीवरी',kpi_access:'सुगम कॉरिडोर',kpi_highrisk:'उच्च-जोखिम कॉरिडोर',kpi_blocked:'अवरुद्ध कॉरिडोर',
+     scen0:'सामान्य दिन',scen_rain:'भारी बारिश',scen1:'NH-6 पर भूस्खलन',scen2:'सड़क नेटवर्क कटा',brief_title:'AI निर्णय सारांश',queue_title:'डिलीवरी प्राथमिकता',feed_title:'फील्ड अपडेट'},
+ as:{nav_cc:'কমাণ্ড চেণ্টাৰ',nav_fr:'ক্ষেত্ৰ প্ৰতিবেদন',nav_ri:'পথ বুদ্ধিমত্তা',live:'লাইভ সিমুলেশ্যন',demo:'ডেমো চলাওক',stop:'ডেমো বন্ধ কৰক',
+     kpi_vehicles:'সক্ৰিয় বাহন',kpi_deliveries:'চলি থকা বিতৰণ',kpi_critical:'জৰুৰী বিতৰণ',kpi_access:'সুগম কৰিডৰ',kpi_highrisk:'উচ্চ-বিপদ কৰিডৰ',kpi_blocked:'বন্ধ কৰিডৰ',
+     scen0:'সাধাৰণ দিন',scen_rain:'প্ৰচণ্ড বৰষুণ',scen1:'NH-6ত ভূমিস্খলন',scen2:'পথ নেটৱৰ্ক বিচ্ছিন্ন',brief_title:'AI সিদ্ধান্ত সাৰাংশ',queue_title:'বিতৰণৰ অগ্ৰাধিকাৰ',feed_title:'ক্ষেত্ৰৰ আপডেট'}
+};
+const state={step:0,lang:'en',sel:'NER-104',online:true,queue:[],demo:false,cargo:'critical',ftype:'Landslide',fsev:4};
+const tr=k=>(T[state.lang][k]||T.en[k]);
+function applyLang(l){
+  state.lang=l; document.documentElement.lang=l;
+  $$('[data-i18n]').forEach(e=>{ if(e.id==='demoBtn')return; e.textContent=tr(e.dataset.i18n); });
+  $('#demoBtn span').textContent=state.demo?tr('stop'):tr('demo');
+  $$('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
+  renderBrief();
+}
+
+/* ---------- geo helpers ---------- */
+const rad=d=>d*Math.PI/180, ROAD=1.3;
+function hav(a,b){const R=6371,dl=rad(b[0]-a[0]),dn=rad(b[1]-a[1]);const x=Math.sin(dl/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+function mkPath(pts,roadSegs=null){const cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+hav(pts[i-1],pts[i]));return{pts,cum,len:cum[cum.length-1],roadSegs};}
+function posAt(p,f){const d=f*p.len;let i=1;while(i<p.cum.length-1&&p.cum[i]<d)i++;const s=(p.cum[i]-p.cum[i-1])||1;const k=Math.min(1,Math.max(0,(d-p.cum[i-1])/s));const a=p.pts[i-1],b=p.pts[i];return[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k];}
+function fmtH(h){const m=Math.round(h*60);return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';}
+const clock=(offMin=0)=>new Date(Date.now()-offMin*60000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+
+/* ---------- network data (approximate coordinates) ---------- */
+const W={G:[26.1445,91.7362],JOR:[26.03,91.87],SHI:[25.5788,91.8933],JOW:[25.43,92.2],HZ:[25.34,92.41],BAD:[24.87,92.59],
+ SIL:[24.8333,92.7789],MIZ:[24.3,92.73],AIZ:[23.7271,92.7176],NAG:[26.35,92.68],LUM:[25.75,93.17],HAF:[25.17,93.02],
+ KM:[26.15,93.3],DIM:[25.9063,93.7276],KOH:[25.6751,94.1086],KM2:[25.2,94.05],IMP:[24.817,93.9368],
+ KAR:[24.87,92.36],DHA:[24.37,92.17],KUM:[24.13,92.03],TEL:[23.84,91.62],AGT:[23.8315,91.2868],
+ TEZ:[26.63,92.8],IM:[26.85,93.2],ITA:[27.0844,93.6053],LGP:[23.84,92.62]};
+const CITIES=[['Guwahati','G'],['Shillong','SHI'],['Silchar','SIL'],['Aizawl','AIZ'],['Agartala','AGT'],['Imphal','IMP'],['Kohima','KOH'],['Dimapur','DIM'],['Itanagar','ITA']];
+
+const CORR={
+ GN:{name:'Guwahati–Nagaon',pts:[W.G,W.NAG],n:['Guwahati','Nagaon']},
+ P:{name:'NH-6 · Guwahati–Silchar',pts:[W.G,W.JOR,W.SHI,W.JOW,W.HZ,W.BAD,W.SIL],n:['Guwahati','Jorabat','Shillong','Jowai','Lumshnong','Badarpur','Silchar']},
+ M:{name:'Silchar–Aizawl',pts:[W.SIL,W.MIZ,W.AIZ],n:['Silchar','Kolasib','Aizawl']},
+ Q:{name:'NH-27 · Lumding–Silchar',pts:[W.NAG,W.LUM,W.HAF,W.SIL],n:['Nagaon','Lumding','Haflong','Silchar']},
+ K:{name:'NH-29 · Nagaon–Imphal',pts:[W.NAG,W.KM,W.DIM,W.KOH,W.KM2,W.IMP],n:['Nagaon','Kampur','Dimapur','Kohima','Kangpokpi','Imphal']},
+ T:{name:'Silchar–Agartala',pts:[W.SIL,W.KAR,W.DHA,W.KUM,W.TEL,W.AGT],n:['Silchar','Karimganj','Dharmanagar','Kumarghat','Teliamura','Agartala']},
+ I:{name:'Guwahati–Itanagar',pts:[W.G,W.TEZ,W.IM,W.ITA],n:['Guwahati','Tezpur','Gohpur','Itanagar']}
+};
+
+/* ---------- road-following routing ----------
+   The demo keeps the original named waypoints as anchors, but asks OSRM for
+   the actual drivable geometry between each pair. If routing is unavailable,
+   the original approximate segment is used as a safe fallback so the demo
+   never breaks offline.
+*/
+const ROUTER_URL='https://router.project-osrm.org/route/v1/driving';
+const ROAD_CACHE=Object.create(null);
+function segKey(a,b){return a[0]+','+a[1]+'|'+b[0]+','+b[1];}
+async function fetchRoadSegment(a,b){
+  const key=segKey(a,b);
+  if(ROAD_CACHE[key])return ROAD_CACHE[key];
+  const reverse=segKey(b,a);
+  if(ROAD_CACHE[reverse])return [...ROAD_CACHE[reverse]].reverse();
+  const url=`${ROUTER_URL}/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson&steps=false`;
+  try{
+    const r=await fetch(url,{mode:'cors'});
+    if(!r.ok)throw new Error('routing '+r.status);
+    const data=await r.json();
+    const coords=data?.routes?.[0]?.geometry?.coordinates;
+    if(!Array.isArray(coords)||coords.length<2)throw new Error('no geometry');
+    const pts=coords.map(([lng,lat])=>[lat,lng]);
+    ROAD_CACHE[key]=pts;
+    return pts;
+  }catch(e){
+    console.warn('Road geometry unavailable for',key,'— using fallback segment.',e.message);
+    const fallback=[a,b];
+    ROAD_CACHE[key]=fallback;
+    return fallback;
+  }
+}
+async function buildRoadPath(waypoints){
+  const parts=[];
+  for(let i=0;i<waypoints.length-1;i++){
+    const a=waypoints[i],b=waypoints[i+1];
+    const pts=await fetchRoadSegment(a,b);
+    parts.push({a,b,pts});
+  }
+  const all=[];const ranges=[];
+  parts.forEach(part=>{
+    const start=all.length?all.length-1:0;
+    if(!all.length)all.push(...part.pts);
+    else all.push(...part.pts.slice(1));
+    const end=all.length-1;
+    {const m=SEGMAP[segKey(part.a,part.b)]||[];ranges.push({k:m[0]??null,i:m[1]??null,aIndex:start,bIndex:end,a:0,b:0,from:part.a,to:part.b});}
+  });
+  const path=mkPath(all);
+  ranges.forEach(r=>{r.a=path.cum[r.aIndex];r.b=path.cum[r.bIndex];});
+  path.roadSegs=ranges;
+  return path;
+}
+async function buildCorridorPath(keys){
+  const refs=[];
+  keys.forEach(k=>{const c=CORR[k];for(let i=0;i<c.pts.length-1;i++)refs.push({k,i,a:c.pts[i],b:c.pts[i+1]});});
+  const parts=[];
+  for(const ref of refs)parts.push({ref,pts:await fetchRoadSegment(ref.a,ref.b)});
+  const all=[];const ranges=[];
+  parts.forEach(({ref,pts})=>{
+    const start=all.length?all.length-1:0;
+    if(!all.length)all.push(...pts);else all.push(...pts.slice(1));
+    const end=all.length-1;
+    ranges.push({k:ref.k,i:ref.i,aIndex:start,bIndex:end,a:0,b:0});
+  });
+  const path=mkPath(all);
+  ranges.forEach(r=>{r.a=path.cum[r.aIndex];r.b=path.cum[r.bIndex];});
+  path.roadSegs=ranges;
+  return path;
+}
+async function loadRoadNetwork(){
+  const refs=[];
+  Object.entries(CORR).forEach(([k,c])=>c.pts.slice(1).forEach((_,i)=>refs.push({k,i,a:c.pts[i],b:c.pts[i+1]})));
+  const unique=[];const seen=new Set();
+  refs.forEach(r=>{const key=segKey(r.a,r.b);if(!seen.has(key)){seen.add(key);unique.push(r);}});
+  for(let i=0;i<unique.length;i+=4)await Promise.all(unique.slice(i,i+4).map(r=>fetchRoadSegment(r.a,r.b)));
+  applyRoadGeometry();
+}
+
+const SEED={GN:1,P:2,M:3,Q:4,K:5,T:6,I:7};
+/* baseline risk per stretch (0-100). Simulated values for the demo. */
+const BASE_OVERRIDE={P:{2:42},K:{2:61},T:{2:57},I:{1:55},Q:{0:42,1:44,2:30},GN:{0:36}};
+function baseRisk(k,i){ if(BASE_OVERRIDE[k]&&BASE_OVERRIDE[k][i]!=null)return BASE_OVERRIDE[k][i]; return Math.round(14+24*Math.abs(Math.sin(i*2.1+SEED[k]*1.3))); }
+/* how much each stretch reacts to rain above 60 mm / 24h (per mm). Steep, landslide-prone stretches react most. */
+const RS={GN:.05,P:.14,M:.10,Q:.07,K:.14,T:.10,I:.10};
+const SEG_RS={P2:.22,K2:.30,T2:.20,I1:.20};
+/* risk a field report pushes a stretch to, by type and severity (1-5). 90+ means closed. Landslide, flood, bridge damage and blockage at severity 4+ close the road. */
+const EFFECT={
+ 'Landslide':[0,38,52,66,92,96],
+ 'Flooding':[0,35,50,66,94,97],
+ 'Bridge damage':[0,35,52,74,96,99],
+ 'Road blocked':[0,42,62,80,95,98],
+ 'Low visibility':[0,30,40,50,60,68]
+};
+/* where each reportable place sits on the network: corridor + stretch indexes */
+const PMAP={
+ 'NH-6 · Jowai–Badarpur':{k:'P',segs:[3,4]},
+ 'NH-27 · Lumding–Haflong':{k:'Q',segs:[1,2]},
+ 'NH-29 · Dimapur–Kohima':{k:'K',segs:[2]},
+ 'Silchar–Agartala':{k:'T',segs:[1,2]},
+ 'Silchar–Aizawl':{k:'M',segs:[0,1]},
+ 'Guwahati–Itanagar':{k:'I',segs:[1]}
+};
+Object.keys(CORR).forEach(k=>{CORR[k].risk=[];for(let i=0;i<CORR[k].pts.length-1;i++)CORR[k].risk.push(baseRisk(k,i));});
+const riskColor=r=>r>=90?'#FF2D2D':r>=70?'#FF7A2E':r>=40?'#FFB43C':'#43D17E';
+
+/* ---------- map ---------- */
+const map=L.map('map',{zoomControl:false,zoomSnap:.25,maxZoom:17,minZoom:6}).fitBounds([[23.2,90.6],[27.5,94.6]],{padding:[10,10]});
+L.control.zoom({position:'bottomright'}).addTo(map);
+const LAYERS={
+ sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:15,maxZoom:17,attribution:'Tiles © Esri, Maxar, Earthstar Geographics'}),
+ terrain:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:15,maxZoom:17,attribution:'Tiles © Esri'}),
+ dark:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxNativeZoom:15,maxZoom:17,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'})
+};
+let curLayer='sat'; LAYERS.sat.addTo(map);
+$('#layers').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  map.removeLayer(LAYERS[curLayer]);curLayer=b.dataset.ly;LAYERS[curLayer].addTo(map);
+  $('#map').classList.toggle('dim',curLayer==='sat');
+  $$('#layers button').forEach(x=>x.classList.toggle('on',x===b));});
+
+CITIES.forEach(([n,k])=>L.marker(W[k],{interactive:false,icon:L.divIcon({className:'',iconSize:[0,0],html:`<div class="city"><i></i><b>${n}</b></div>`})}).addTo(map));
+
+/* corridor polylines — start with the original fallback, then replace them with real road geometry */
+const segLines={},segGlows={};
+Object.entries(CORR).forEach(([k,c])=>{
+  segLines[k]=[];segGlows[k]=[];
+  for(let i=0;i<c.pts.length-1;i++){
+    const fallback=[c.pts[i],c.pts[i+1]];
+    const glow=L.polyline(fallback,{color:'#fff',weight:9,opacity:.35,interactive:false}).addTo(map);
+    const pl=L.polyline(fallback,{weight:5,opacity:1,lineCap:'round',lineJoin:'round'}).addTo(map);
+    pl.on('click',e=>L.popup().setLatLng(e.latlng).setContent(`<b>${c.name}</b><br>Risk score: ${c.risk[i]}${c.risk[i]>=90?' (closed)':''}`).openOn(map));
+    segGlows[k].push(glow);segLines[k].push(pl);
+  }
+});
+function applyRoadGeometry(){
+  Object.entries(CORR).forEach(([k,c])=>c.pts.slice(1).forEach((_,i)=>{
+    const geom=ROAD_CACHE[segKey(c.pts[i],c.pts[i+1])]||[c.pts[i],c.pts[i+1]];
+    segGlows[k][i].setLatLngs(geom);segLines[k][i].setLatLngs(geom);
+  }));
+  recolor();
+}
+function recolor(){Object.entries(CORR).forEach(([k,c])=>c.risk.forEach((r,i)=>segLines[k][i].setStyle({color:riskColor(r),dashArray:r>=90?'3 9':null,weight:r>=90?6:5})));}
+recolor();
+
+/* hazards */
+let hazards=[];
+function hazardPoint(place){const m=PMAP[place],c=CORR[m.k];if(m.segs.length>1)return c.pts[m.segs[1]];const i=m.segs[0];return[(c.pts[i][0]+c.pts[i+1][0])/2,(c.pts[i][1]+c.pts[i+1][1])/2];}
+const HZ={'Flooding':['t-flood','≈'],'Landslide':['t-slide','▲'],'Bridge damage':['t-bridge','B'],'Road blocked':['t-block','!'],'Low visibility':['t-vis','~']};
+function renderHazards(){
+  hazards.forEach(h=>map.removeLayer(h));hazards=[];
+  S.reports.filter(r=>r.active).forEach(r=>{
+    const F=EFFECT[r.type][r.sev];if(F<60)return;const z=HZ[r.type];
+    const m=L.marker(hazardPoint(r.place),{icon:L.divIcon({className:'',iconSize:[0,0],html:`<div class="hz ${z[0]}"><div class="core">${z[1]}</div></div>`}),zIndexOffset:1000}).addTo(map).bindPopup(`<b>${r.type}</b> · severity ${r.sev}/5<br>${r.place}<br>Reported ${r.ts}`);
+    m._rid=r.id;hazards.push(m);
+  });
+}
+
+/* ---------- vehicles ---------- */
+const PRIO_RANK={critical:0,high:1,normal:2};
+const RAW=[
+ {id:'NER-104',cargo:'Essential medicines',prio:'critical',from:'Guwahati',to:'Aizawl',pts:[W.G,W.JOR,W.SHI,W.JOW,W.HZ,W.BAD,W.SIL,W.MIZ,W.AIZ],t:.05,sp:2.2,kmh:38},
+ {id:'NER-142',cargo:'Cold-chain vaccines',prio:'critical',from:'Guwahati',to:'Itanagar',pts:[W.G,W.TEZ,W.IM,W.ITA],t:.3,sp:3.2,kmh:41},
+ {id:'NER-211',cargo:'Food supplies',prio:'high',from:'Guwahati',to:'Imphal',pts:[W.G,W.NAG,W.KM,W.DIM,W.KOH,W.KM2,W.IMP],t:.18,sp:3.4,kmh:36},
+ {id:'NER-330',cargo:'Food supplies',prio:'high',from:'Silchar',to:'Aizawl',pts:[W.SIL,W.MIZ,W.AIZ],t:.35,sp:1.6,kmh:32},
+ {id:'NER-087',cargo:'Construction material',prio:'normal',from:'Guwahati',to:'Agartala',pts:[W.G,W.JOR,W.SHI,W.JOW,W.HZ,W.BAD,W.SIL,W.KAR,W.DHA,W.KUM,W.TEL,W.AGT],t:.07,sp:2.0,kmh:34},
+ {id:'NER-058',cargo:'Relief kits',prio:'normal',from:'Dimapur',to:'Kohima',pts:[W.DIM,W.KOH],t:.5,sp:.5,kmh:28}
+];
+const PLANE='<svg width="12" height="12" viewBox="0 0 24 24" fill="#0D2B36"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>';
+const vIcon=v=>L.divIcon({className:'',iconSize:[0,0],html:`<div class="veh ${v.prio}${v.mode==='air'?' air':''}${state.sel===v.id?' sel':''}"><div class="dot">${v.mode==='air'?PLANE:''}</div><div class="tag">${v.id}</div></div>`});
+const V=RAW.map((r,k)=>{const v={...r,k,orig:mkPath(r.pts),t0:r.t,hold:false,holdReason:null,rerouted:false,act:null,blockedBy:null,patrol:false,loopAt:0,mode:'road',status:'En route'};v.path=v.orig;
+  /* the two NH-6 vehicles shuttle on the stretch before the hazard zone until a road-cleared report lets them pass */
+  if(v.id==='NER-104'||v.id==='NER-087'){v.patrol=true;v.loopAt=v.orig.cum[4]/v.orig.len-0.02;}v.marker=L.marker(posAt(v.path,v.t),{icon:vIcon(v),zIndexOffset:500}).addTo(map);v.marker.on('click',()=>selectVeh(v.id));return v;});
+const byId=id=>V.find(v=>v.id===id);
+function refreshIcons(){V.forEach(v=>v.marker.setIcon(vIcon(v)));}
+function selectVeh(id){state.sel=id;refreshIcons();updateTrack();renderQueue();}
+function resetVeh(v){v.path=v.orig;v.t=v.t0;v.hold=false;v.holdReason=null;v.blockedBy=null;v.rerouted=false;v.act=null;v.mode='road';v.status='En route';v.sp=RAW[v.k].sp;v.patrol=(v.id==='NER-104'||v.id==='NER-087');if(v.marker)v.marker.setIcon(vIcon(v));}
+let flowLayers=[];
+function clearFlow(){flowLayers.forEach(l=>map.removeLayer(l));flowLayers=[];}
+
+/* ---------- motion loop ---------- */
+let last=performance.now(),acc=0;
+function frame(now){
+  const dt=Math.min(.1,(now-last)/1000);last=now;acc+=dt;
+  V.forEach(v=>{
+    v.kmhNow=v.hold?0:(v.mode==='air'?420:Math.round(v.kmh+6*Math.sin(now/3000+v.k)));
+    if(!v.hold){
+      v.t+=dt*v.sp/v.path.len;
+      if(v.patrol&&v.path===v.orig&&v.t>=v.loopAt){v.t=v.t0;}
+      else if(v.t>=1){ if(v.mode==='air'||v.rerouted){v.t=1;v.hold=true;v.holdReason=null;v.status=v.mode==='air'?'Delivered by airlift':'Delivered via NH-27';} else v.t=0; }
+    }
+    v.marker.setLatLng(posAt(v.path,v.t));
+  });
+  if(acc>.25){acc=0;updateTrack();}
+  requestAnimationFrame(frame);
+}
+function eta(v){const left=v.path.len*ROAD*(1-v.t);return v.kmhNow>0?fmtH(left/v.kmhNow):'—';}
+function updateTrack(){
+  const v=byId(state.sel);if(!v)return;
+  $('#tr-id').textContent=v.id;$('#tr-prio').textContent=v.prio[0].toUpperCase()+v.prio.slice(1)+' priority';$('#tr-prio').className='badge '+v.prio;
+  $('#tr-cargo').textContent=v.cargo;$('#tr-from').textContent=v.from;$('#tr-to').textContent=v.to;
+  $('#tr-bar').style.width=(v.t*100).toFixed(1)+'%';
+  $('#tr-kmh').textContent=v.kmhNow||0;$('#tr-left').textContent=Math.round(v.path.len*ROAD*(1-v.t));$('#tr-eta').textContent=eta(v);
+  const st=$('#tr-status');st.textContent=v.status;st.className='tr-status'+(v.hold&&v.mode!=='air'?' hold':'');
+}
+function renderQueue(){
+  $('#queue').innerHTML=[...V].sort((a,b)=>PRIO_RANK[a.prio]-PRIO_RANK[b.prio]).map(v=>`<li data-id="${v.id}" class="${v.id===state.sel?'sel':''}"><b>${v.cargo}</b><span class="badge ${v.prio}">${v.prio}</span><span>${v.id} · ${v.from} → ${v.to}</span><span class="e">${v.hold&&v.mode!=='air'?'On hold':eta(v)}</span></li>`).join('');
+}
+$('#queue').addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;selectVeh(li.dataset.id);const v=byId(li.dataset.id);map.panTo(v.marker.getLatLng());});
+setInterval(renderQueue,1000);
+
+/* ---------- KPIs ---------- */
+const cur={veh:0,del:0,crit:0,acc:0,high:0,blk:0};
+function tween(key,el,to,dur=900){const from=cur[key];const t0=performance.now();cur[key]=to;
+  (function s(n){const p=Math.min(1,(n-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=Math.round(from+(to-from)*e);if(p<1)requestAnimationFrame(s);})(t0);}
+/* corridor counts come from the shared risk model: 90+ = blocked, 70-89 = high risk. Region-wide baseline: 7 blocked, 11 high-risk, 82% accessible. */
+function updateKPI(dur){
+  const ks=Object.keys(CORR),nb=ks.filter(k=>corrMax(k)>=90).length,nh=ks.filter(k=>{const m=corrMax(k);return m>=70&&m<90;}).length;
+  const acc=Math.round(82-2*nb-nh);
+  tween('veh',$('#k-veh'),27,dur);tween('del',$('#k-del'),64,dur);tween('crit',$('#k-crit'),12,dur);
+  tween('acc',$('#k-acc'),acc,dur);tween('high',$('#k-high'),11+nh,dur);tween('blk',$('#k-blk'),7+nb,dur);
+  const b=$('#k-accbar');b.style.width=acc+'%';b.style.background=acc>=80?'var(--tea)':acc>=77?'#E0A020':'var(--alert)';
+}
+
+/* ---------- incidents ---------- */
+const incidents=[
+ {ts:clock(14),type:'Heavy rain',place:'NH-6 · Shillong–Jowai',sev:3,text:'Water on road surface, trucks slowing to 20 km/h.'},
+ {ts:clock(38),type:'Low visibility',place:'NH-29 · Dimapur–Kohima',sev:3,text:'Dense fog reported near Zubza.'},
+ {ts:clock(75),type:'Cleared',place:'NH-29 · near Mao',sev:1,text:'Minor slip cleared, both lanes open.'},
+ {ts:clock(120),type:'Inspection',place:'Silchar–Agartala',sev:2,text:'Bridge load limit checked, heavy trucks allowed.'}
+];
+function feedHTML(list,cls=''){return list.map((i,idx)=>`<li class="fi sev${i.sev} ${i.isNew&&idx===0?'new':''}"><span class="t">${i.ts}</span><div><b>${i.type} · ${i.place}</b><p>${i.text}</p></div></li>`).join('');}
+function renderFeed(){const h=feedHTML(incidents.slice(0,6));$('#feed').innerHTML=h;$('#feed2').innerHTML=feedHTML(incidents.slice(0,10));}
+function pushIncident(i){incidents.forEach(x=>x.isNew=false);incidents.unshift({ts:clock(),isNew:true,...i});renderFeed();}
+
+/* =========================================================
+   SHARED STORE
+   S holds the only inputs: rain forecast + field reports.
+   Everything else (stretch risk, route risk, recommendation,
+   KPIs, vehicle holds, hazard pins) is derived from S in
+   computeRisks()/applyHolds() and pushed to every page through
+   emit(). Field Report, Command Center and Route Intelligence
+   are all subscribers. All values are simulated.
+   ========================================================= */
+const S={rain:60,reports:[],clearance:[],seq:0,cseq:0,lastEvt:null};
+const subs=[];const subscribe=f=>subs.push(f);const emit=()=>subs.forEach(f=>f());
+const active=()=>S.reports.filter(r=>r.active);
+/* ---- data layer: simulated, but shaped like real records so a backend can replace it ----
+   incidents  -> S.reports    (id, type, place, sev, text, ts, active, corridor, routeId, authorityId)
+   weather    -> S.rain       (24 h rainfall forecast, mm)
+   clearanceRequests -> S.clearance
+   routes / roadConditions / cargo / authorities -> DATA below */
+const DATA={
+  weights:{incident:20,rainfall:15,terrain:15,road:15,closure:20,history:10,travel:5},
+  routes:{
+    A:{id:'NH-6',name:'NH-6 via Shillong',origin:'Guwahati',destination:'Aizawl',speed:42,
+       terrain:.70,terrainNote:'Steep ghat sections, landslide-prone',
+       roadBase:.40,roadNote:'Good surface, narrow in places',
+       history:.50,historyNote:'High historical incident frequency',rainSens:1.0},
+    B:{id:'NH-27',name:'NH-27 via Haflong',origin:'Guwahati',destination:'Aizawl',speed:40,
+       terrain:.65,terrainNote:'Mixed hill and plain sections',
+       roadBase:.70,roadNote:'Patchy surface, single carriageway',
+       history:.30,historyNote:'Low historical incident frequency',rainSens:.9}
+  },
+  cargo:{
+    critical:{label:'Critical cargo',example:'Essential medicines',tol:5,policy:'Safety threshold takes priority over shortest travel time.'},
+    high:{label:'High priority',example:'Food supplies',tol:10,policy:'Safety comes first, and speed only breaks a close call.'},
+    normal:{label:'Normal cargo',example:'Construction material',tol:0,policy:'Route efficiency may be considered if risk remains within acceptable limits.'}
+  },
+  /* DEMO CONTACTS ONLY. Replace phone with the official number and set isDemo:false when real data is available. */
+  authorities:[
+    {id:'AUTH-NH6-01',routeId:'NH-6',corridor:'P',area:'Jowai to Badarpur',authority:'District Road Control',department:'PWD',phone:'+91-XXXXXXXXXX',isDemo:true},
+    {id:'AUTH-NH27-01',routeId:'NH-27',corridor:'Q',area:'Lumding to Haflong',authority:'District Road Control',department:'PWD',phone:'+91-XXXXXXXXXX',isDemo:true},
+    {id:'AUTH-NH27-02',routeId:'NH-27',corridor:'GN',area:'Guwahati to Nagaon',authority:'District Road Control',department:'PWD',phone:'+91-XXXXXXXXXX',isDemo:true},
+    {id:'AUTH-NH29-01',routeId:'NH-29',corridor:'K',area:'Dimapur to Kohima',authority:'District Road Control',department:'PWD',phone:'+91-XXXXXXXXXX',isDemo:true},
+    {id:'AUTH-SLC-AGT-01',routeId:'Silchar–Agartala',corridor:'T',area:'Silchar to Agartala',authority:'District Road Control',department:'Road Maintenance',phone:'+91-XXXXXXXXXX',isDemo:true},
+    {id:'AUTH-SLC-AZL-01',routeId:'Silchar–Aizawl',corridor:'M',area:'Silchar to Aizawl',authority:'District Road Control',department:'Road Maintenance',phone:'+91-XXXXXXXXXX',isDemo:true},
+    {id:'AUTH-GHY-ITA-01',routeId:'Guwahati–Itanagar',corridor:'I',area:'Guwahati to Itanagar',authority:'District Road Control',department:'PWD',phone:'+91-XXXXXXXXXX',isDemo:true}
+  ]
+};
+const authFor=corridor=>DATA.authorities.find(a=>a.corridor===corridor);
+/* ---- backend connection ----
+   FastAPI: GET /api/health, GET /api/reports, POST /api/reports. Set API_BASE to null for pure local simulation.
+   Field names differ between projects, so ALL mapping lives in REPORT_MAP: align it once with the
+   ReportIn/ReportOut model shown in /docs. If the backend is down or rejects a report, the app keeps working locally. */
+/*
+   Backend URL strategy:
+   1) Use a value supplied by the page, if present:
+        window.NERLINK_API_BASE = 'https://<backend-host>/api'
+   2) Otherwise use the same-origin /api path. This is important when the
+      dashboard is opened from 192.168.x.x:8443 behind a reverse proxy.
+   3) If the page is served directly from FastAPI, /api is also correct.
+   The old hard-coded 127.0.0.1:8000 caused the browser to look for FastAPI
+   on the user's own machine instead of the machine serving NER-LINK.
+*/
+const API_BASE=((window.NERLINK_API_BASE||`${window.location.origin}/api`).replace(/\/$/,''));
+const API_CANDIDATES=[
+  API_BASE,
+  `${window.location.origin}/api`,
+  ...(location.protocol==='http:' ? [`http://${location.hostname}:8000/api`] : []),
+  ...(location.protocol==='https:' ? [`https://${location.hostname}:8000/api`] : [])
+].filter((v,i,a)=>v&&a.indexOf(v)===i);
+let ACTIVE_API_BASE=API_BASE;
+const REPORT_MAP={
+  to:r=>({type:r.type,incident_type:r.type,location:r.place,place:r.place,route:r.routeId,severity:r.sev,description:r.text,notes:r.text,reported_at:new Date().toISOString()}),
+  from:row=>{
+    const txt=x=>String(x==null?'':x).toLowerCase();
+    const ty=txt(row.type||row.incident_type||row.category),pl=txt([row.location,row.place,row.route,row.road].join(' '));
+    const type=/land|slide/.test(ty)?'Landslide':/flood|water/.test(ty)?'Flooding':/bridge/.test(ty)?'Bridge damage':/block/.test(ty)?'Road blocked':/visib|fog/.test(ty)?'Low visibility':/clear/.test(ty)?'Road cleared':null;
+    const place=/nh-?6\b|jowai|badarpur|shillong/.test(pl)?'NH-6 · Jowai–Badarpur':/nh-?27|haflong|lumding/.test(pl)?'NH-27 · Lumding–Haflong':/nh-?29|kohima|dimapur/.test(pl)?'NH-29 · Dimapur–Kohima':/agartala/.test(pl)?'Silchar–Agartala':/aizawl/.test(pl)?'Silchar–Aizawl':/itanagar/.test(pl)?'Guwahati–Itanagar':null;
+    if(!type||!place||type==='Road cleared')return null;
+    const sev=Math.max(1,Math.min(5,Math.round(+(row.severity!=null?row.severity:row.sev)||0)));if(!sev)return null;
+    const d=new Date(row.created_at||row.reported_at||row.timestamp||NaN);
+    return{type,place,sev,text:String(row.description||row.notes||row.text||'').trim()||'No extra details.',ts:isNaN(d)?clock():d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false}),remoteId:row.id!=null?row.id:null};
+  }
+};
+async function apiFetch(path,opts){
+  const base=ACTIVE_API_BASE||API_BASE;
+  const r=await fetch(base+path,{headers:{'Content-Type':'application/json'},...opts});
+  const t=await r.text();
+  if(!r.ok)throw new Error(r.status+' '+t.slice(0,240));
+  try{return JSON.parse(t);}catch(e){return t;}
+}
+async function findWorkingBackend(){
+  let lastErr=null;
+  for(const base of API_CANDIDATES){
+    try{
+      const r=await fetch(base+'/health',{method:'GET',headers:{'Accept':'application/json'},cache:'no-store'});
+      if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,160));
+      ACTIVE_API_BASE=base;
+      return true;
+    }catch(e){lastErr=e;}
+  }
+  console.warn('NER-LINK backend health check failed on all configured endpoints:',lastErr?.message||lastErr);
+  return false;
+}
+const api={
+  health:()=>apiFetch('/health'),
+  listReports:()=>apiFetch('/reports'),
+  postIncident:async rep=>{
+    if(!ACTIVE_API_BASE)return{ok:true,simulated:true};
+    try{const data=await apiFetch('/reports',{method:'POST',body:JSON.stringify(REPORT_MAP.to(rep))});return{ok:true,data};}
+    catch(e){console.warn('POST /api/reports failed, report kept locally:',e.message);return{ok:false,error:e.message};}
+  },
+  requestClearance:async req=>({ok:true,simulated:true,ref:req.ref}),   // no backend endpoint yet: simulated
+  getAuthority:async corridor=>authFor(corridor)                         // no backend endpoint yet: local DATA.authorities
+};
+function setApiState(ok,msg){
+  const c=$('#apiChip');
+  c.classList.toggle('off',!ok);
+  c.querySelector('span').textContent=msg;
+  c.title=ok?'FastAPI connection active':'FastAPI unavailable; NER-LINK is running in local demo mode';
+}
+async function initBackend(){
+  setApiState(false,'Connecting to backend…');
+  const connected=await findWorkingBackend();
+  if(!connected){
+    /* Do not pretend the backend is connected. The dashboard remains fully usable. */
+    setApiState(false,'Local demo mode');
+    return;
+  }
+  setApiState(true,'Backend connected');
+  try{
+    const rows=await api.listReports(),list=Array.isArray(rows)?rows:(rows.reports||rows.items||[]);let n=0;
+    list.forEach(row=>{
+      const rep=REPORT_MAP.from(row);if(!rep)return;
+      if(rep.remoteId!=null&&S.reports.some(r=>r.remoteId===rep.remoteId))return;
+      const p=PMAP[rep.place];
+      S.reports.push({id:++S.seq,...rep,active:false,hydrated:true,corridor:p.k,routeId:SHORT[p.k],authorityId:(authFor(p.k)||{}).id});   // past reports feed the history factor, they do not close roads
+      incidents.push({ts:rep.ts,type:rep.type,place:rep.place,sev:rep.sev,text:rep.text});n++;
+    });
+    console.info('Backend reports loaded as history: '+n+' of '+list.length,list[0]);
+    if(n){computeRisks();renderFeed();emit();}
+  }catch(e){console.warn('GET /api/reports failed:',e.message);}
+}
+const SHORT={GN:'Guwahati–Nagaon',P:'NH-6',M:'Silchar–Aizawl',Q:'NH-27',K:'NH-29',T:'Silchar–Agartala',I:'Guwahati–Itanagar'};
+const RN={A:'NH-6 via Shillong',B:'NH-27 via Haflong'};
+const rainWord=mm=>mm>=130?'Extreme':mm>=90?'Heavy':mm>=40?'Moderate':'Light';
+let pendingView=null;
+function goTo(c,z){if($('#view-cc').classList.contains('on'))map.flyTo(c,z,{duration:1.4});else pendingView={c,z};}
+function goBounds(b){if($('#view-cc').classList.contains('on'))map.flyToBounds(b,{duration:1.2,padding:[10,10]});else pendingView={b};}
+
+/* ---- 1. stretch risk from baseline + rain + active reports ---- */
+function computeRisks(){
+  const d=S.rain-60;
+  Object.entries(CORR).forEach(([k,c])=>{
+    c.risk=c.pts.slice(1).map((_,i)=>{const s=(SEG_RS[k+i]!=null?SEG_RS[k+i]:RS[k]);return baseRisk(k,i)+Math.round(s*(d>0?d:d*.5));});
+  });
+  active().forEach(r=>{
+    const m=PMAP[r.place],arr=CORR[m.k].risk,r0=arr.slice(),F=EFFECT[r.type][r.sev];
+    m.segs.forEach(i=>{arr[i]=Math.max(arr[i],F);});
+    [Math.min(...m.segs)-1,Math.max(...m.segs)+1].forEach(i=>{      // neighbours feel part of it
+      if(i>=0&&i<arr.length&&F>r0[i])arr[i]=Math.max(arr[i],Math.round(r0[i]+.35*(F-r0[i])));
+    });
+  });
+  Object.values(CORR).forEach(c=>c.risk=c.risk.map(x=>Math.max(5,Math.min(99,x))));
+}
+const agg=a=>Math.round(.6*Math.max(...a)+.4*a.reduce((s,x)=>s+x,0)/a.length);
+const corrRisk=k=>agg(CORR[k].risk), corrMax=k=>Math.max(...CORR[k].risk);
+
+/* ---- 2. routes: A = NH-6 via Shillong, B = NH-27 via Haflong ---- */
+let PA=mkPath([W.G,W.JOR,W.SHI,W.JOW,W.HZ,W.BAD,W.SIL,W.MIZ,W.AIZ]);
+let PB=mkPath([W.G,W.NAG,W.LUM,W.HAF,W.SIL,W.MIZ,W.AIZ]);
+const ROUTE_C={A:['P','M'],B:['GN','Q','M']};
+const ROUTE_SEGS={};
+Object.entries(ROUTE_C).forEach(([r,cs])=>{ROUTE_SEGS[r]=cs.flatMap(k=>CORR[k].pts.slice(1).map((_,i)=>({k,i,len:hav(CORR[k].pts[i],CORR[k].pts[i+1])})));});
+/* ---- 2b. multi-factor route risk engine ----
+   Route risk = sum of 7 weighted factors (max 100). Each factor is a 0-1 score times its weight.
+   Statuses: 0-39 SAFE, 40-69 WATCH, 70-89 HIGH RISK, 90+ CLOSED. A real closure (landslide, flood, bridge
+   failure or blockage at severity 4+) forces CLOSED even if the weighted sum is lower. Cargo priority does
+   not change the score: it changes which route is recommended and what action is advised. */
+const clamp01=x=>Math.max(0,Math.min(1,x));
+const CLOSERS=['Landslide','Flooding','Bridge damage','Road blocked'];
+const CAUSE={Landslide:'Landslide / road blockage',Flooding:'Flooding / road damage','Bridge damage':'Bridge failure / structural damage','Road blocked':'Road blockage','Low visibility':'Low visibility'};
+const isClosing=r=>CLOSERS.includes(r.type)&&EFFECT[r.type][r.sev]>=90;
+const routeReports=k=>active().filter(r=>ROUTE_C[k].includes(PMAP[r.place].k));
+const FAC=[['incident','Incident'],['rainfall','Rainfall'],['terrain','Terrain'],['road','Road condition'],['closure','Closure / bridge'],['history','History'],['travel','Travel']];
+function statusOf(score,closed){
+  if(closed||score>=90)return{label:'CLOSED',band:'closed'};
+  if(score>=70)return{label:'HIGH RISK',band:'high'};
+  if(score>=40)return{label:'WATCH',band:'watch'};
+  return{label:'SAFE',band:'safe'};
+}
+function routeStats(){
+  const out={},W=DATA.weights;
+  [['A',PA],['B',PB]].forEach(([k,p])=>{
+    const D=DATA.routes[k],cs=ROUTE_C[k],reps=routeReports(k),segMax=Math.max(...cs.flatMap(c=>CORR[c].risk));
+    const km=p.len*ROAD,h=km/D.speed,closers=reps.filter(isClosing).sort((a,b)=>EFFECT[b.type][b.sev]-EFFECT[a.type][a.sev]);
+    const cl=reps.filter(r=>CLOSERS.includes(r.type)),bridge=reps.find(r=>r.type==='Bridge damage');
+    const past=S.reports.filter(r=>!r.active&&ROUTE_C[k].includes(PMAP[r.place].k)).length;   // cleared or backend-history reports
+    const norm={
+      incident:reps.length?clamp01(Math.max(...reps.map(r=>r.sev))/5+.1*(reps.length-1)):.10,
+      rainfall:clamp01(S.rain/140*D.rainSens),
+      terrain:D.terrain,
+      road:Math.max(D.roadBase,...cl.map(r=>r.sev/5*.95)),
+      closure:closers.length?1:Math.max(0,...cl.map(r=>clamp01((EFFECT[r.type][r.sev]-40)/50))),
+      history:Math.min(.95,D.history+.05*past),
+      travel:clamp01(h/14)
+    };
+    const note={
+      incident:reps.length?`${reps.length} active report${reps.length>1?'s':''}, worst severity ${Math.max(...reps.map(r=>r.sev))}/5`:'No active reports, routine background incidents only',
+      rainfall:`${rainWord(S.rain)}, ${S.rain} mm forecast in 24h`,
+      terrain:D.terrainNote,
+      road:cl.length?'Damage reported on this route':D.roadNote,
+      closure:closers.length?`Closed: ${CAUSE[closers[0].type]}`:(bridge?`Bridge damaged (severity ${bridge.sev}/5)`:'No closure or bridge failure reported'),
+      history:D.historyNote+(past?`, plus ${past} past field report${past>1?'s':''} on this route`:''),
+      travel:`${Math.round(km)} km, ${fmtH(h)}`
+    };
+    const items=FAC.map(([key,label])=>({key,label,max:W[key],pts:Math.round(norm[key]*W[key]),note:note[key]}));
+    const calc=items.reduce((s,x)=>s+x.pts,0);
+    let closed=closers.length>0||segMax>=90||calc>=90;
+    const risk=closed?Math.max(calc,segMax,90):calc;
+    const st=statusOf(risk,closed);
+    const causes=[...new Set(closers.map(r=>CAUSE[r.type]))];
+    out[k]={k,id:D.id,name:D.name,km:Math.round(km),h,risk,calc,shown:risk,closed,status:st,items,closers,reps,causes,segMax,bridge:bridge?'Damaged':'OK'};
+  });
+  return out;
+}
+/* Cargo priority decides the ACTION, not the score. */
+function recommend(cargo){
+  const R=routeStats(),C=DATA.cargo[cargo],feas=['A','B'].filter(k=>!R[k].closed);
+  let best=null,mode='route';
+  if(!feas.length)mode='nofeasible';
+  else if(cargo==='normal'){                       // efficiency allowed while risk stays acceptable (below 70)
+    const ok=feas.filter(k=>R[k].risk<70);
+    if(ok.length)best=ok.sort((a,b)=>R[a].h-R[b].h)[0];else mode='hold';
+  }else{                                           // safety first; speed only breaks a close call
+    const safest=Math.min(...feas.map(k=>R[k].risk));
+    best=feas.filter(k=>R[k].risk<=safest+C.tol).sort((a,b)=>R[a].h-R[b].h)[0];
+  }
+  return{R,best,mode,cargo,C};
+}
+function snap(){const rec=recommend('critical');return{best:rec.best,mode:rec.mode,R:rec.R,corr:Object.fromEntries(Object.keys(CORR).map(k=>[k,corrRisk(k)]))};}
+
+/* ---- 3. vehicles react to closures on the road ahead ---- */
+const SEGMAP={};
+Object.entries(CORR).forEach(([k,c])=>{for(let i=0;i<c.pts.length-1;i++){SEGMAP[segKey(c.pts[i],c.pts[i+1])]=[k,i];}});
+function vehSegs(v){
+  if(v.path.roadSegs?.length)return v.path.roadSegs.map(s=>({k:s.k??null,i:s.i??null,a:s.a,b:s.b,risk:(s.k&&s.i!=null&&CORR[s.k])?CORR[s.k].risk[s.i]:0}));
+  const out=[];for(let j=0;j<v.path.pts.length-1;j++){const m=SEGMAP[segKey(v.path.pts[j],v.path.pts[j+1])];if(m)out.push({k:m[0],i:m[1],a:v.path.cum[j],b:v.path.cum[j+1],risk:CORR[m[0]].risk[m[1]]});}return out;
+}
+function applyHolds(){
+  const held=[],released=[];
+  V.forEach(v=>{
+    if(v.mode==='air')return;
+    const d=v.t*v.path.len,blocked=vehSegs(v).find(s=>s.b>d&&s.risk>=90);
+    if(blocked){
+      if(v.holdReason!=='closure'){v.holdReason='closure';v.hold=true;held.push(v.id);}
+      v.blockedBy=blocked;
+      v.status=v.prio==='critical'?'Waiting for dispatcher decision':'Held: '+SHORT[blocked.k]+' closed ahead';
+    }else if(v.holdReason==='closure'){
+      v.holdReason=null;v.hold=false;v.blockedBy=null;released.push(v.id);
+      v.status=v.rerouted?'Rerouted via NH-27':'En route (road reopened)';
+    }
+  });
+  return{held,released};
+}
+async function approve(){
+  const v=byId('NER-104');
+  if(!(v.holdReason==='closure'&&v.mode!=='air'))return;
+  const R=routeStats();clearFlow();
+  if(!v.rerouted&&!R.B.closed){
+    const now=posAt(v.path,v.t);
+    v.path=await buildRoadPath([now,W.NAG,W.LUM,W.HAF,W.SIL,W.MIZ,W.AIZ]);v.t=0;v.rerouted=true;v.act='reroute';v.patrol=false;
+    v.hold=false;v.holdReason=null;v.blockedBy=null;v.status='Rerouted via NH-27';
+    flowLayers.push(L.polyline(v.path.pts,{color:'#37E2D5',weight:6,className:'flow',interactive:false}).addTo(map));
+    toast('NER-104 rerouted via NH-27. Dispatcher approved.');
+  }else{
+    const from=posAt(v.path,v.t);
+    v.mode='air';v.path=mkPath([from,W.LGP]);v.t=0;v.act='air';v.sp=9;
+    v.hold=false;v.holdReason=null;v.blockedBy=null;v.status='Airlift to Aizawl';
+    flowLayers.push(L.polyline(v.path.pts,{color:'#fff',weight:4,dashArray:'2 10',className:'flow',interactive:false}).addTo(map));
+    toast('NER-104 cargo moved to airlift.');
+  }
+  state.sel='NER-104';v.marker.setIcon(vIcon(v));
+  applyHolds();emit();
+}
+
+/* ---- 4. actions: the only ways the store changes ---- */
+function dispatch(a){
+  clearTimers();
+  const before=snap();let nClear=0;
+  if(a.type==='RESET'){S.rain=60;S.reports=S.reports.filter(r=>r.hydrated);S.clearance=[];S.lastEvt=null;clearFlow();V.forEach(resetVeh);}
+  else if(a.type==='RAIN'){S.rain=a.mm;pushIncident({type:a.mm>60?'Heavy rain forecast':'Rain easing',place:'North East region',sev:a.mm>60?3:1,text:a.mm+' mm expected in the next 24 hours.'});}
+  else if(a.type==='REPORT'){
+    const p=PMAP[a.rep.place],au=authFor(p.k);
+    const rec={id:++S.seq,...a.rep,ts:clock(),active:true,corridor:p.k,routeId:SHORT[p.k],authorityId:au?au.id:null};
+    S.reports.push(rec);pushIncident({...a.rep});
+    if(!a.local&&!state.demo)api.postIncident(rec).then(r=>{
+      if(r.ok&&!r.simulated&&r.data&&r.data.id!=null)rec.remoteId=r.data.id;
+      if(!r.ok&&ACTIVE_API_BASE)toast('Report applied locally. Backend did not accept it: '+r.error.slice(0,90));
+    });
+  }
+  else if(a.type==='CLEAR'){
+    const p=PMAP[a.rep.place],hit=S.reports.filter(r=>r.active&&PMAP[r.place].k===p.k&&PMAP[r.place].segs.some(i=>p.segs.includes(i)));
+    hit.forEach(r=>{r.active=false;r.clearedAt=clock();nClear++;});
+    S.clearance.forEach(c=>{if(hit.some(r=>r.id===c.incidentId)){c.resolved=true;c.status='Resolved: road cleared';}});
+    V.forEach(v=>{v.patrol=false;});                       // reopened road: shuttling vehicles may now pass
+    pushIncident({type:'Road cleared',place:a.rep.place,sev:1,text:a.rep.text});
+  }
+  computeRisks();
+  const h=applyHolds(),after=snap();
+  S.lastEvt=a.type==='RESET'?null:buildEvt(a,before,after,h,nClear);
+  if(a.rep&&a.rep.place)goTo(hazardPoint(a.rep.place),8.5);
+  if(a.type==='RESET')goBounds([[23.2,90.6],[27.5,94.6]]);
+  state.step=0;emit();
+  if(S.lastEvt)runSteps(S.lastEvt.steps.length);
+}
+function submitReport(rep){dispatch(rep.type==='Road cleared'?{type:'CLEAR',rep}:{type:'REPORT',rep});}
+
+/* ---- 5. what the AI "did", as readable steps ---- */
+function buildEvt(a,b,af,h,nClear){
+  const steps=[],names=ks=>ks.map(k=>RN[k]).join(' and ');
+  const recStep=(clear)=>{
+    if(af.mode==='nofeasible')return['Recommendation','No feasible road route. Hold cargo or airlift critical items.',1];
+    if(af.best!==b.best)return['Recommendation',clear?`Changed: ${RN[af.best]} is open again and recommended.`:`Changed: ${RN[af.best]} is now recommended (was ${b.best?RN[b.best]:'none'}).`];
+    return['Recommendation',`Unchanged: ${RN[af.best]} stays recommended.`];
+  };
+  const routeLine=ks=>ks.map(k=>`${RN[k]}: ${b.R[k].risk} → ${af.R[k].risk} (${af.R[k].status.label})`).join('. ')+'.';
+  let lab,bb,aa,status='';
+  if(a.type==='RAIN'){
+    lab='NH-6 via Shillong';bb=b.R.A.risk;aa=af.R.A.risk;status=af.R.A.status.label;
+    steps.push(['Forecast updated',`${a.mm} mm expected in 24 h (${rainWord(a.mm)}). Rainfall factor rises on every route.`]);
+    steps.push(['AI processing…','Re-scoring all 7 risk factors for both routes.']);
+    steps.push(['Risk recalculated',routeLine(['A','B'])]);
+    steps.push(recStep());
+  }else{
+    const p=PMAP[a.rep.place],ks=['A','B'].filter(r=>ROUTE_C[r].includes(p.k)),au=authFor(p.k);
+    if(ks.length){lab=RN[ks[0]];bb=b.R[ks[0]].risk;aa=af.R[ks[0]].risk;status=af.R[ks[0]].status.label;}
+    else{lab=SHORT[p.k];bb=b.corr[p.k];aa=af.corr[p.k];}
+    if(a.type==='REPORT'){
+      const closing=isClosing(a.rep)||CLOSERS.includes(a.rep.type)&&EFFECT[a.rep.type][a.rep.sev]>=90;
+      steps.push(['Report received',`${a.rep.type}, severity ${a.rep.sev}, ${a.rep.place}. Sent by the field team.`]);
+      steps.push(['AI processing…','Updating incident, closure, road condition and rainfall factors for the affected routes.']);
+      steps.push(['Hazard recorded',EFFECT[a.rep.type][a.rep.sev]>=60?`${a.rep.type} pinned on the map at ${a.rep.place}.`:`${a.rep.type} noted at ${a.rep.place}. Low impact on risk.`,closing?1:0]);
+      steps.push(['Risk recalculated',ks.length?routeLine(ks):`${lab} risk: ${bb} → ${aa}.`,closing||aa>=70?1:0]);
+      if(closing&&ks.length)steps.push(['Closure rule',`${names(ks)} is marked CLOSED because ${a.rep.type.toLowerCase()} (severity ${a.rep.sev}/5) blocks the road, whatever the weighted score says.`,1]);
+      steps.push(recStep());
+      if(af.mode==='nofeasible')steps.push(['No feasible route','Every road corridor to Aizawl is above the safe threshold. Decision panel opened in Route Intelligence.',1]);
+      if(closing&&au)steps.push(['Authority',`${au.authority} (${au.department}) is the clearance contact. DEMO CONTACT ${au.phone}. Request clearance from Route Intelligence.`]);
+      if(h.held.length)steps.push(['Cargo check',h.held.map(id=>`${id} (${byId(id).prio})`).join(', ')+' held before the closed stretch.'+(h.held.includes('NER-104')?' Dispatcher decision needed for NER-104.':''),1]);
+    }else{
+      steps.push(['Report received',`Road cleared, ${a.rep.place}. Sent by the field team.`]);
+      steps.push(['AI processing…','Checking that no other active hazard covers this stretch.']);
+      steps.push(['Hazard closed',nClear?`${nClear} active hazard${nClear>1?'s':''} removed from ${a.rep.place}. Any clearance request is marked resolved.`:'No active hazard was recorded here. Noted only.']);
+      steps.push(['Risk recalculated',ks.length?routeLine(ks):`${lab} risk: ${bb} → ${aa}.`]);
+      steps.push(recStep(true));
+      if(h.released.length)steps.push(['Cargo check',h.released.join(', ')+' can move again.']);
+    }
+  }
+  return{kind:a.type,steps,result:{lab,bb,aa,status,best:af.best,mode:af.mode,changed:af.best!==b.best}};
+}
+const stepLI=x=>`<li class="${x[2]?'r':''}"><b>${x[0]}</b><span>${x[1]}</span></li>`;
+let stepTimers=[];
+const clearTimers=()=>{stepTimers.forEach(clearTimeout);stepTimers=[];};
+function runSteps(n){
+  clearTimers();state.step=0;renderBrief();renderProc();
+  for(let i=1;i<=n;i++)stepTimers.push(setTimeout(()=>{state.step=i;renderBrief();renderProc();},i*900));
+}
+
+/* ---- 6. decision explanation ("Why this route?") ---- */
+function routeAction(k,rec){
+  const r=rec.R[k],c=rec.cargo,best=rec.best?rec.R[rec.best]:null;
+  if(r.closed)return 'Do not dispatch. Request road clearance and monitor reopening.';
+  if(rec.mode==='hold')return 'Hold normal cargo until this route falls below risk 70.';
+  if(k===rec.best){
+    if(c==='critical')return r.risk>=70?'Only open road. Proceed with dispatcher approval and escort, or consider airlift.':'Recommended. Safest open road; the safety threshold takes priority over speed.';
+    if(c==='high')return 'Recommended. Best balance of safety and travel time.';
+    return 'Recommended. Fastest road while risk stays within the acceptable limit (below 70).';
+  }
+  if(r.risk>=70)return 'Not advised. Risk is above the safe operating limit.';
+  if(best&&r.risk>best.risk)return `Not chosen. ${r.risk-best.risk} points riskier than ${best.name}.`;
+  if(best)return `Not chosen. ${fmtH(r.h-best.h)} slower, and the safety gap is within tolerance.`;
+  return 'Open.';
+}
+function closedReason(r){return r.closers.map(x=>`${x.type} at ${x.place} (severity ${x.sev}/5${x.text&&x.text!=='No extra details.'?', "'+x.text+'"':''})`).join('; ');}
+function whyBlocks(rec){
+  const R=rec.R,out=[];
+  ['A','B'].forEach(k=>{
+    const r=R[k],lines=[];let cls,verb;
+    if(r.closed){
+      cls='b';verb='rejected';
+      r.closers.forEach(x=>lines.push(`${CAUSE[x.type]}: ${x.type.toLowerCase()} at ${x.place}${x.text&&x.text!=='No extra details.'?'. '+x.text:''}`));
+      if(!r.closers.length)lines.push('Weighted risk is above the closure threshold (90).');
+      if(S.rain>60)lines.push(`Rainfall is increasing (${rainWord(S.rain)}, ${S.rain} mm).`);
+      lines.push(`Route risk = ${r.risk}. Road status = CLOSED.`);
+      if(r.calc<r.risk)lines.push(`Weighted score alone is ${r.calc}. The closure rule overrides it.`);
+    }else{
+      const top=[...r.items].sort((a,b)=>b.pts/b.max-a.pts/a.max).slice(0,2).map(x=>`${x.label.toLowerCase()} ${x.pts}/${x.max}`).join(', ');
+      cls=k===rec.best?'g':(r.status.band==='high'?'w':'n');verb=k===rec.best?'selected':'not chosen';
+      lines.push(`Route risk = ${r.risk}. Road status = ${r.status.label}.`);
+      lines.push(`Main factors: ${top}. Travel ${fmtH(r.h)}, ${r.km} km.`);
+      lines.push(routeAction(k,rec));
+    }
+    out.push({cls,title:`${r.name} ${verb}`,lines});
+  });
+  return out;
+}
+function decisionText(rec){
+  if(rec.mode==='nofeasible')return{head:'No safe road corridor is currently available.',act:rec.cargo==='normal'?'Hold cargo at the Guwahati hub until clearance.':'Airlift critical medicines OR hold cargo at the Guwahati hub until clearance.'};
+  if(rec.mode==='hold')return{head:'Hold normal cargo. Every open road is above the acceptable risk limit (70).',act:'Critical cargo can still be routed. Recalculate when risk drops.'};
+  return{head:`${rec.R[rec.best].name} is the decision for ${rec.C.label.toLowerCase()}.`,act:rec.C.policy};
+}
+function whyLines(rec,cargo){
+  const out=[];
+  ['A','B'].forEach(k=>{const r=rec.R[k];out.push([r.closed?'b':(k===rec.best?'g':(r.status.band==='high'?'w':'n')),`${r.name}: ${r.status.label}, risk ${r.risk}.${r.closed&&r.causes.length?' '+r.causes[0]+'.':''}`]);});
+  const d=decisionText(rec);out.push([rec.mode==='route'?'g':'b',d.head]);
+  out.push(['n',rec.C.policy]);
+  return out;
+}
+const whyLI=([c,t])=>`<li><i class="${c==='g'?'':c}">${{g:'✓',b:'✕',w:'!',n:'i'}[c]}</i><span>${t}</span></li>`;
+
+/* ---- 7. AI decision brief (Command Center) ---- */
+function watchList(){
+  const rows=[];Object.entries(CORR).forEach(([k,c])=>c.risk.forEach((r,i)=>rows.push({r,label:`${SHORT[k]} · ${c.n[i]}–${c.n[i+1]}`})));
+  return rows.sort((a,b)=>b.r-a.r).slice(0,3);
+}
+function decisionHTML(rec,pending){
+  const R=rec.R,A=R.A,B=R.B,v=byId('NER-104'),best=rec.best,extra=B.h-A.h;
+  const others=V.filter(x=>x.holdReason==='closure'&&x.id!=='NER-104');
+  const othersNote=others.length?`<p class="note">${others.map(x=>`<b>${x.id}</b> (${x.cargo.toLowerCase()}) held: ${SHORT[x.blockedBy.k]} closed ahead.`).join(' ')}</p>`:'';
+  const why=`<h3 style="margin-top:14px">Why this route?</h3><ul class="why">${whyLines(rec,'critical').slice(0,3).map(whyLI).join('')}</ul>`;
+  const willAir=v.rerouted||B.closed;
+  const btn=pending?`<button class="btn" id="approveBtn">${willAir?'Approve airlift':'Approve reroute'}</button>`
+    :(v.act&&(A.closed||B.closed)?`<button class="btn done">${v.act==='air'?'Airlift approved':'Reroute approved'}</button>`:'');
+  const row=(k,r)=>r.closed?`<tr><td>${r.name}</td><td class="x">Closed</td><td>—</td></tr>`
+    :`<tr><td>${r.name}${best===k?' ✓':''}</td><td>Risk ${r.risk}%</td><td class="${best===k?'ok':''}">${fmtH(r.h)}</td></tr>`;
+  let body;
+  if(A.closed&&B.closed){
+    body=`<h3>No safe road route</h3>
+      <table class="cmp"><tr><td>Airlift to Lengpui airport</td><td>~1h 10m</td><td class="ok">Best</td></tr>
+      <tr><td>Hold at Guwahati hub</td><td>Re-check every 15 min</td><td>Fallback</td></tr>
+      <tr><td>Relay from Silchar depot</td><td>After clearance</td><td>Later</td></tr></table>
+      <p class="note">Only <b>NER-104</b> (critical medicines) is airlifted. Food and construction cargo hold at depots.</p>${othersNote}${why}${btn}`;
+  }else if(A.closed){
+    body=`<h3>Recommended action</h3><table class="cmp">${row('A',A)}${row('B',B)}</table>
+      <p class="note"><b>NER-104</b> (medicines) is rerouted via NH-27. <b>NER-087</b> (construction material) waits: a ${fmtH(extra)} detour is not worth it for normal cargo.</p>
+      ${v.act==='reroute'?`<p class="note" style="color:var(--tea)"><b>About ${Math.max(1,Math.round(12+A.h-B.h))}h earlier</b> than waiting for the road to clear (assuming 12h clearance).</p>`:''}${othersNote}${why}${btn}`;
+  }else if(B.closed){
+    body=`<h3>NH-27 is closed</h3><table class="cmp">${row('A',A)}${row('B',B)}</table>
+      <p class="note">${A.name} stays the only open road.</p>${othersNote}${why}${btn}`;
+  }else{
+    const act=active(),reopened=v.act==='reroute'&&!v.hold;
+    body=`<h3>${S.lastEvt&&S.lastEvt.result.changed?'Recommendation changed':'Recommended action'}</h3><table class="cmp">${row('A',A)}${row('B',B)}</table>
+      <p class="note">${act.length?`${act.length} active hazard${act.length>1?'s':''}: ${act.map(r=>`${r.type.toLowerCase()}, ${r.place}`).join('; ')}. Road is open but risky.`:'No active hazards. Rainfall is the only risk driver.'}${reopened?' NER-104 stays on NH-27 (already under way). NH-6 is open for new dispatches.':''}</p>${othersNote}${why}`;
+  }
+  const clr=(A.closed||B.closed)?'<button class="btn alt" data-go="ri">Road clearance and contacts</button>':'';
+  return `<div class="decide">${body}${clr}</div>`;
+}
+function renderBrief(){
+  const el=$('#brief'),rec=recommend('critical'),ev=S.lastEvt,ks=Object.keys(CORR);
+  const lvl=ks.some(k=>corrMax(k)>=90)?2:(S.rain>60||ks.some(k=>corrMax(k)>=70))?1:0;
+  el.className='card s'+lvl;
+  const title=`<h2>${tr('brief_title')}</h2>`;
+  if(!ev&&lvl===0){
+    el.innerHTML=`<div class="card-h">${title}<span class="pill">Monitoring</span></div>
+      <div class="lead">All priority corridors are within safe limits.</div>
+      <div class="sub">Watching the three stretches most exposed to rain and landslides. ${RN.A} is recommended.</div>
+      <div class="watch">${watchList().map(w=>`<div><span>${w.label}</span><b>${w.r}</b><div class="b"><i style="width:${w.r}%"></i></div></div>`).join('')}</div>`;
+    return;
+  }
+  const v=byId('NER-104'),pending=v.holdReason==='closure'&&v.mode!=='air';
+  const n=ev?ev.steps.length:0,done=!ev||state.step>=n;
+  const pill=!done?['warn','Analysing…']:pending?['warn','Needs approval']:v.act&&lvl===2?['bad','Action taken']:lvl===2?['bad','Closure active']:lvl===1?['warn','Watch']:['','Monitoring'];
+  el.innerHTML=`<div class="card-h">${title}<span class="pill ${pill[0]}">${pill[1]}</span></div>
+    ${ev?`<ul class="steps">${ev.steps.slice(0,state.step).map(stepLI).join('')}</ul>`:''}${done?decisionHTML(rec,pending):''}`;
+}
+$('#brief').addEventListener('click',e=>{if(e.target.id==='approveBtn')approve();const g=e.target.closest('[data-go]');if(g)showTab(g.dataset.go);});
+
+/* ---- 8. Field Report page: what the system did with the report ---- */
+function renderProc(){
+  const el=$('#procCard'),ev=S.lastEvt;
+  if(!ev){el.style.display='none';return;}
+  el.style.display='';
+  const n=ev.steps.length,done=state.step>=n,r=ev.result;
+  el.innerHTML=`<div class="card-h"><h2>What the system did</h2><span class="pill ${done?'':'warn'}">${done?'Done':'Processing…'}</span></div>
+    <ul class="steps">${ev.steps.slice(0,state.step).map(stepLI).join('')}</ul>
+    ${done?`<div class="decide"><h3>Result</h3><table class="cmp">
+      <tr><td>${r.lab} risk</td><td class="${r.aa>=70?'x':'ok'}">${r.bb} → ${r.aa}${r.status?' · '+r.status:''}</td></tr>
+      <tr><td>Recommended route</td><td class="${r.best?(r.changed?'x':'ok'):'x'}">${r.best?RN[r.best]:(r.mode==='nofeasible'?'None: no feasible road route':'None: hold cargo')}</td></tr></table>
+      <button class="btn alt" data-go="cc">See it in Command Center</button><button class="btn alt" data-go="ri">See Route Intelligence</button></div>`:''}`;
+}
+
+/* ---- 9. map chips, weather chip ---- */
+function presetId(){
+  const a=active().map(r=>r.type+'|'+r.place+'|'+r.sev).sort().join(',');
+  const Ls='Landslide|NH-6 · Jowai–Badarpur|5',Fl='Flooding|NH-27 · Lumding–Haflong|4';
+  if(S.rain===60&&!a)return'n';if(S.rain===120&&!a)return'rain';
+  if(S.rain===60&&a===Ls)return'slide';if(S.rain===60&&a===[Fl,Ls].sort().join(','))return'cut';
+  return null;
+}
+function renderChips(){const id=presetId(),cls={n:'',rain:' s1',slide:' s2',cut:' s3'};$$('#scen button').forEach(b=>b.className=b.dataset.s===id?'on'+cls[id]:'');}
+function renderWeather(){const n=Object.keys(CORR).filter(k=>corrMax(k)>=55).length;$('#wx1').textContent='Guwahati · '+rainWord(S.rain)+' rain';$('#wx2').textContent=S.rain+' mm forecast (24h) · '+n+' corridors on watch';}
+function preset(id){
+  dispatch({type:'RESET'});
+  if(id==='rain')dispatch({type:'RAIN',mm:120});
+  if(id==='slide'||id==='cut')dispatch({type:'REPORT',local:true,rep:{type:'Landslide',place:'NH-6 · Jowai–Badarpur',sev:5,text:'Debris across both lanes. Road impassable.'}});
+  if(id==='cut')dispatch({type:'REPORT',local:true,rep:{type:'Flooding',place:'NH-27 · Lumding–Haflong',sev:4,text:'Road under water near Haflong.'}});
+}
+$('#scen').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(state.demo)stopDemo();preset(b.dataset.s);});
+
+/* subscribers: every page re-renders from the same store */
+subscribe(()=>{recolor();renderHazards();});
+subscribe(()=>updateKPI(700));
+subscribe(renderWeather);
+subscribe(renderChips);
+subscribe(renderBrief);
+subscribe(()=>renderRI());
+subscribe(renderQueue);
+subscribe(renderProc);
+subscribe(()=>{refreshIcons();updateTrack();});
+
+/* ---- 10. demo mode: same actions a user would trigger ---- */
+let demoT=[];
+function stopDemo(){demoT.forEach(clearTimeout);demoT=[];state.demo=false;$('#demoBtn').classList.remove('run');$('#demoBtn span').textContent=tr('demo');}
+function fillForm(type,place,sev,note){
+  state.ftype=type;state.fsev=sev;
+  $$('#fr-type button').forEach(x=>x.classList.toggle('on',x.dataset.t===type));
+  $$('#fr-sev button').forEach(x=>x.classList.toggle('on',+x.dataset.n===sev));
+  $('#fr-place').value=place;$('#fr-note').value=note;
+}
+$('#demoBtn').addEventListener('click',()=>{
+  if(state.demo){stopDemo();return;}
+  state.demo=true;$('#demoBtn').classList.add('run');$('#demoBtn span').textContent=tr('stop');
+  if(!state.online)setNet(true);
+  showTab('cc');preset('n');
+  const at=(ms,f)=>demoT.push(setTimeout(f,ms));
+  at(3500,()=>dispatch({type:'RAIN',mm:120}));                                                        // heavy rain
+  at(9500,()=>{showTab('fr');fillForm('Landslide','NH-6 · Jowai–Badarpur',5,'Debris across both lanes. JCB needed.');});
+  at(11500,()=>$('#fr-send').click());                                                                // field report: landslide
+  at(19500,()=>showTab('cc'));                                                                        // command center reacts
+  at(24000,approve);                                                                                  // dispatcher approves reroute
+  at(27500,()=>showTab('ri'));                                                                        // NH-27 recommended
+  at(33000,()=>{showTab('fr');fillForm('Road cleared','NH-6 · Jowai–Badarpur',1,'Debris removed. Both lanes open.');});
+  at(34500,()=>$('#fr-send').click());                                                                // road cleared
+  at(42000,()=>showTab('ri'));                                                                        // NH-6 available again
+  at(48000,()=>{showTab('cc');stopDemo();toast('Demo finished. Try your own report in Field Report.');});
+});
+
+/* ---------- tabs + language ---------- */
+function showTab(t){
+  $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $$('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+t));
+  if(t==='cc')setTimeout(()=>{map.invalidateSize();if(pendingView){const p=pendingView;pendingView=null;p.b?map.flyToBounds(p.b,{duration:1.1,padding:[10,10]}):map.flyTo(p.c,p.z,{duration:1.3});}},60);
+  if(t==='ri')renderRI();
+}
+$('.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(state.demo&&b.dataset.tab!=='cc')stopDemo();showTab(b.dataset.tab);}});
+$('.lang').addEventListener('click',e=>{const b=e.target.closest('button');if(b)applyLang(b.dataset.l);});
+window.addEventListener('resize',()=>map.invalidateSize());
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg,label,fn){
+  $('#toastMsg').textContent=msg;const b=$('#toastBtn');
+  if(label){b.style.display='';b.textContent=label;b.onclick=()=>{fn();$('#toast').classList.remove('on');};}else b.style.display='none';
+  $('#toast').classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>$('#toast').classList.remove('on'),label?7000:3500);
+}
+
+/* ---------- field report ---------- */
+const TYPES=['Landslide','Flooding','Bridge damage','Road blocked','Low visibility','Road cleared'];
+const PLACES=['NH-6 · Jowai–Badarpur','NH-27 · Lumding–Haflong','NH-29 · Dimapur–Kohima','Silchar–Agartala','Silchar–Aizawl','Guwahati–Itanagar'];
+$('#fr-type').innerHTML=TYPES.map(t=>`<button type="button" class="${t===state.ftype?'on':''}" data-t="${t}">${t}</button>`).join('');
+$('#fr-place').innerHTML=PLACES.map(p=>`<option>${p}</option>`).join('');
+$('#fr-sev').innerHTML=[1,2,3,4,5].map(n=>`<button type="button" class="${n===state.fsev?'on':''}" data-n="${n}">${n}</button>`).join('');
+$('#fr-type').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.ftype=b.dataset.t;$$('#fr-type button').forEach(x=>x.classList.toggle('on',x===b));});
+$('#fr-sev').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.fsev=+b.dataset.n;$$('#fr-sev button').forEach(x=>x.classList.toggle('on',x===b));});
+$('#fr-photo').addEventListener('click',()=>{$('#fr-photoName').textContent='photo_2481.jpg attached';});
+function setNet(on){
+  state.online=on;$('#netSw').classList.toggle('off',!on);
+  $('#netLabel').textContent=on?'Online':'Offline mode';
+  $('#netHint').textContent=on?'Reports reach the control room instantly.':'No signal? Reports are saved on the phone and sync when the network returns.';
+  $('#fr-send').textContent=on?'Send report':'Save on phone';
+  if(on&&state.queue.length)syncQueue();
+}
+$('#netSw').addEventListener('click',()=>setNet(!state.online));
+function renderQueueBox(){
+  $('#qcard').style.display=state.queue.length?'':'none';$('#qcount').textContent=state.queue.length;
+  $('#qlist').innerHTML=feedHTML(state.queue);
+  $('#syncBtn').style.display=state.online?'':'none';
+}
+function syncQueue(){state.queue.slice().reverse().forEach(q=>submitReport(q));const n=state.queue.length;state.queue=[];renderQueueBox();toast(n+' saved report'+(n>1?'s':'')+' synced to the control room.');}
+$('#syncBtn').addEventListener('click',syncQueue);
+$('#fr-send').addEventListener('click',()=>{
+  const place=$('#fr-place').value,note=$('#fr-note').value.trim()||'No extra details.';
+  const rep={type:state.ftype,place,sev:state.fsev,text:note};
+  if(!state.online){state.queue.unshift({...rep,ts:clock()});renderQueueBox();toast('Saved on phone. It will send when you are back online.');return;}
+  submitReport(rep);$('#fr-note').value='';$('#fr-photoName').textContent='No photo attached';
+  toast('Report received. Risk model updated.','See Command Center',()=>showTab('cc'));
+});
+$('#procCard').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)showTab(b.dataset.go);});
+
+/* ---------- route intelligence (reads the shared store) ---------- */
+function stripHTML(k){
+  const segs=ROUTE_SEGS[k],tot=segs.reduce((s,x)=>s+x.len,0);let out='';
+  for(let j=0;j<24;j++){
+    const d=(j+.5)/24*tot;let acc=0,seg=segs[segs.length-1];
+    for(const s of segs){acc+=s.len;if(d<=acc){seg=s;break;}}
+    const r=CORR[seg.k].risk[seg.i],c=CORR[seg.k];
+    out+=`<i title="${SHORT[seg.k]} · ${c.n[seg.i]}–${c.n[seg.i+1]}: risk ${r}" style="background:${r>=90?'#C8372D':riskColor(r)}"></i>`;
+  }
+  return out;
+}
+const BADGE={closed:'closed',high:'hr',watch:'high',safe:'normal'};
+const sevWord=s=>s>=4?'Critical':s===3?'High':'Moderate';
+const reqFor=id=>S.clearance.find(c=>c.incidentId===id);
+function nearestHub(){const v=byId('NER-104'),p=posAt(v.path,v.t);return CITIES.map(([n,k])=>[n,hav(p,W[k])]).sort((a,b)=>a[1]-b[1])[0][0];}
+
+function routeCardHTML(k,rec){
+  const r=rec.R[k],best=rec.best===k,st=r.status;
+  const main=(r.closed?r.causes.map(c=>`<span>${c}</span>`):[]).concat([...r.items].sort((a,b)=>b.pts/b.max-a.pts/a.max).slice(0,r.closed?2:3).map(x=>`<span>${x.label} ${x.pts}/${x.max}</span>`)).join('');
+  return `<div class="card rc ${best?'rec':''} ${r.closed?'closed':''}">
+    <div class="rt"><div><h3>${r.name}</h3><div class="hint">Guwahati → Aizawl · ${r.km} km · ${r.closed?'ETA not available':'ETA '+fmtH(r.h)}</div></div>
+      <div style="display:flex;gap:6px;align-items:flex-start">${best?'<span class="badge normal">Recommended</span>':''}<span class="badge ${BADGE[st.band]}">${st.label}</span></div></div>
+    <div class="big" style="color:${r.closed?'var(--alert)':'var(--ink)'}">${r.risk}<span style="font:500 14px var(--f-body);color:var(--ink2)"> route risk</span></div>
+    ${r.closed?`<div class="forced">CLOSED: ${closedReason(r)||'weighted risk above 90'}.${r.calc<r.risk?` Weighted score alone is ${r.calc}; the closure rule overrides it.`:''}</div>`:''}
+    <div class="mainf">${main}</div>
+    <div class="hint" style="margin:12px 0 4px">Risk breakdown (weighted, out of 100)</div>
+    ${r.items.map(x=>`<div class="bd" title="${x.note}"><span>${x.label}</span><div class="b"><i style="width:${x.pts/x.max*100}%;background:${riskColor(x.pts/x.max*100)}"></i></div><b>${x.pts}/${x.max}</b></div>`).join('')}
+    <div class="bd"><span><b>Total</b></span><div></div><b>${r.calc}/100</b></div>
+    <div class="hint" style="margin-top:14px">Risk along the road, start to finish</div>
+    <div class="strip">${stripHTML(k)}</div>
+    <div class="act"><b>Recommended action:</b> ${routeAction(k,rec)}</div></div>`;
+}
+
+function noFeasHTML(rec){
+  const R=rec.R,C=rec.C,d=decisionText(rec),closed=['A','B'].map(k=>R[k]).filter(r=>r.closed);
+  const contacts=[...new Set(closed.flatMap(r=>r.closers.map(x=>x.id)))].map(id=>S.reports.find(x=>x.id===id));
+  const reqd=contacts.length&&contacts.every(x=>reqFor(x.id));
+  const auth=[...new Set(contacts.map(x=>authFor(x.corridor)).filter(Boolean).map(a=>`${a.authority} (${a.department})`))].join(', ')||'District Road Control';
+  const hub=nearestHub(),air=rec.cargo==='normal'?'Alternate transport is not justified for normal cargo. Hold until a road reopens.':`Consider alternate transport: airlift for ${C.example.toLowerCase()} (about 1h 10m to Lengpui airport).`;
+  return `<div class="nf-h">NO FEASIBLE ROAD ROUTE</div>
+    <div class="nf-meta"><div><span>Origin</span><b>Guwahati</b></div><div><span>Destination</span><b>Aizawl</b></div><div><span>Cargo</span><b>${C.example} (${C.label})</b></div></div>
+    <span style="margin-top:8px">All available road corridors currently exceed the safe operating threshold (risk 90+ or a confirmed closure).</span>
+    <div class="nf-grid">${closed.map(r=>`<div class="nf-route"><h4>${r.name}<span class="s">CLOSED</span></h4>Risk: ${r.risk}<br>Cause: ${r.causes.join(', ')||'Risk above 90'}</div>`).join('')}</div>
+    <div style="font:700 15px var(--f-head)">Recommended actions</div>
+    <ol class="nf-acts">
+      <li>Hold vehicle at the nearest safe hub (${hub}).</li>
+      <li>Notify district authority: ${auth}.</li>
+      <li>Request emergency road clearance${reqd?' (request sent, awaiting response)':''}.</li>
+      <li>${air}</li>
+      <li>Monitor route reopening.</li>
+      <li>Route is recalculated automatically when new field data arrives.</li>
+    </ol>
+    ${contacts.map(x=>{const au=authFor(x.corridor),rq=reqFor(x.id);return `<div class="nf-contact"><div><b>ROAD CLEARANCE CONTACT</b><br>${au.authority} · ${au.department} · ${x.type} at ${x.place}<br><span class="ph">${au.isDemo?'DEMO CONTACT: ':''}${au.phone}</span></div><div class="btnrow"><button class="btn nfb" data-act="call" data-r="${x.id}">CALL AUTHORITY</button><button class="btn nfb" data-act="req" data-r="${x.id}"${rq?' disabled':''}>${rq?'REQUEST SENT':'REQUEST CLEARANCE'}</button></div></div>`;}).join('')}
+    <div style="margin-top:12px;font:400 13.5px var(--f-body);opacity:.9">${d.act}</div>`;
+}
+function verdictHTML(rec){
+  if(rec.mode==='nofeasible')return noFeasHTML(rec);
+  if(rec.mode==='hold')return `Hold normal cargo for now.<span>Every open road is above the acceptable risk limit (70). Critical cargo can still be routed. ${rec.C.policy}</span>`;
+  const o=rec.best==='A'?'B':'A',rb=rec.R[rec.best],ro=rec.R[o];
+  if(ro.closed)return `Recommended: ${rb.name} (${fmtH(rb.h)}, risk ${rb.risk}).<span>${ro.name} is CLOSED. ${rb.name} is the only open road. ${rec.C.policy}</span>`;
+  const dr=ro.risk-rb.risk,dh=ro.h-rb.h,goodR=dr>=0,goodT=dh>=0;
+  const a=dr===0?'equally risky':Math.abs(dr)+' points '+(goodR?'safer':'riskier'),b=fmtH(Math.abs(dh))+(goodT?' faster':' slower');
+  return `Recommended: ${rb.name} (${fmtH(rb.h)}, risk ${rb.risk}).<span>It is ${a} ${goodR===goodT?'and':'but'} ${b} than ${ro.name}. ${rec.C.policy}</span>`;
+}
+function whyHTML(rec){
+  const d=decisionText(rec);
+  return `<div class="card-h"><h2>Why this route?</h2><span class="pill">${rec.C.label}</span></div>
+    ${whyBlocks(rec).map(b=>`<div class="wb"><div class="wbh"><ul class="why" style="gap:0"><li style="grid-template-columns:22px 1fr;align-items:center"><i class="${b.cls==='g'?'':b.cls}">${{g:'✓',b:'✕',w:'!',n:'i'}[b.cls]}</i><b>${b.title}</b></li></ul></div><ul>${b.lines.map(l=>`<li>${l}</li>`).join('')}</ul></div>`).join('')}
+    <div class="decide" style="margin-top:8px"><h3>Decision</h3><p class="note" style="margin:0;color:var(--ink)"><b>${d.head}</b></p><p class="note">${d.act}</p></div>`;
+}
+function clearHTML(rec){
+  const items=[];
+  ['A','B'].forEach(k=>rec.R[k].closers.forEach(x=>{if(!items.includes(x))items.push(x);}));
+  if(!items.length)return '';
+  return `<div class="card-h"><h2>Road clearance / damage control</h2><span class="pill bad">${items.length} closure${items.length>1?'s':''}</span></div>
+    <div class="clr">${items.map(x=>{const au=authFor(x.corridor),rq=reqFor(x.id);
+      return `<div class="clr-i"><div style="font:700 15px var(--f-head)">${x.type} at ${x.place}</div>
+        <div class="kvs"><span>Authority</span><b>${au.authority} · ${au.department}${au.isDemo?'<span class="demo-tag">DEMO CONTACT</span>':''}</b>
+        <span>Contact</span><b>${au.phone}</b>
+        <span>Incident</span><b>${CAUSE[x.type]}, severity ${x.sev}/5 (${sevWord(x.sev)}). ${x.text&&x.text!=='No extra details.'?x.text:''}</b>
+        <span>Status</span><b class="${rq?'ok':''}">${rq?rq.status+' · request '+rq.ref+' sent '+rq.ts:'Clearance required'}</b></div>
+        <div class="btnrow"><button class="btn alt" data-act="call" data-r="${x.id}">CALL AUTHORITY</button>
+        <button class="btn red" data-act="req" data-r="${x.id}"${rq?' disabled':''}>${rq?'REQUEST SENT':'REQUEST CLEARANCE'}</button>
+        <button class="btn alt" data-act="view" data-r="${x.id}">VIEW INCIDENT</button>
+        <button class="btn alt" data-act="track" data-r="${x.id}">TRACK CLEARANCE</button></div></div>`;}).join('')}</div>
+    <p class="hint" style="margin-top:10px">Contacts are placeholders. Real numbers go in DATA.authorities.</p>`;
+}
+function renderRI(){
+  const rec=recommend(state.cargo),v=$('#verdict');
+  v.className='verdict'+(rec.mode==='nofeasible'?' nofeas':'');
+  v.innerHTML=verdictHTML(rec);
+  $('#whyCard').innerHTML=whyHTML(rec);
+  $('#riCards').innerHTML=['A','B'].map(k=>routeCardHTML(k,rec)).join('');
+  const cl=clearHTML(rec),cc=$('#clearCard');cc.style.display=cl?'':'none';cc.innerHTML=cl;
+}
+$('#cargoSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.cargo=b.dataset.p;$$('#cargoSeg button').forEach(x=>x.classList.toggle('on',x===b));renderRI();});
+
+/* ---- clearance workflow (frontend simulation, shaped for POST /api/clearance-request) ---- */
+function openModal(html){$('#mdBody').innerHTML=html;$('#modal').classList.add('on');}
+function closeModal(){$('#modal').classList.remove('on');}
+function callModal(id){
+  const x=S.reports.find(r=>r.id===id),au=authFor(x.corridor);
+  openModal(`<h3>Call authority</h3><div class="kvs"><span>Authority</span><b>${au.authority} · ${au.department}</b><span>Area</span><b>${au.area}</b><span>Phone</span><b>${au.phone}${au.isDemo?'<span class="demo-tag">DEMO CONTACT</span>':''}</b></div>
+    <p class="hint">${au.isDemo?'This is a placeholder number. No call is placed. Real official numbers are added in DATA.authorities.':''}</p>
+    <div class="btnrow" style="margin-top:14px">${au.isDemo?'':`<a class="btn" href="tel:${au.phone}" style="text-align:center;text-decoration:none">Dial ${au.phone}</a>`}<button class="btn alt" data-md="close">Close</button></div>`);
+}
+function reqModal(id){
+  const x=S.reports.find(r=>r.id===id),au=authFor(x.corridor);
+  const held=V.filter(v=>v.holdReason==='closure'&&v.blockedBy&&v.blockedBy.k===x.corridor).map(v=>`${v.cargo} (${v.id})`);
+  openModal(`<h3>Request road clearance</h3><div class="kvs">
+    <span>Incident</span><b>${x.type} at ${x.place}</b>
+    <span>Severity</span><b>${sevWord(x.sev)} (${x.sev}/5)</b>
+    <span>Cargo affected</span><b>${held.length?held.join(', '):DATA.cargo.critical.example+' (critical)'}</b>
+    <span>Requested action</span><b>Emergency road clearance</b>
+    <span>Authority</span><b>${au.authority} · ${au.department}${au.isDemo?'<span class="demo-tag">DEMO CONTACT</span>':''}</b></div>
+    <div class="btnrow" style="margin-top:14px"><button class="btn red" data-md="send" data-r="${id}">Send request</button><button class="btn alt" data-md="close">Cancel</button></div>`);
+}
+async function sendRequest(id){
+  const x=S.reports.find(r=>r.id===id);if(!x||reqFor(id))return;
+  const au=authFor(x.corridor),ref='CLR-'+String(++S.cseq).padStart(3,'0');
+  const req={ref,incidentId:id,corridor:x.corridor,authorityId:au.id,status:'Awaiting response',ts:clock(),action:'Emergency road clearance',severity:sevWord(x.sev)};
+  await api.requestClearance(req);
+  S.clearance.push(req);
+  setTimeout(()=>{if(S.clearance.includes(req)&&!req.resolved){req.status='Acknowledged (simulated)';emit();}},8000);
+  openModal(`<h3 class="ok">CLEARANCE REQUEST SENT</h3><div class="kvs"><span>Reference</span><b>${ref}</b><span>Incident</span><b>${x.type} at ${x.place}</b><span>Authority</span><b>${au.authority}</b><span>Status</span><b>Awaiting response</b><span>Timestamp</span><b>${req.ts}</b></div>
+    <p class="hint">Simulated request. A real response will arrive through the backend API once it is connected.</p>
+    <div class="btnrow" style="margin-top:14px"><button class="btn alt" data-md="close">Close</button></div>`);
+  emit();
+}
+function trackModal(id){
+  const x=S.reports.find(r=>r.id===id),rq=reqFor(id);
+  openModal(rq?`<h3>Track clearance</h3><div class="kvs"><span>Reference</span><b>${rq.ref}</b><span>Incident</span><b>${x.type} at ${x.place}</b><span>Status</span><b>${rq.status}</b><span>Sent at</span><b>${rq.ts}</b></div>
+      <p class="hint">Status is simulated. The route reopens as soon as a Road cleared report arrives from the field.</p><div class="btnrow" style="margin-top:14px"><button class="btn alt" data-md="close">Close</button></div>`
+    :`<h3>Track clearance</h3><p>No clearance request has been sent for this incident yet.</p><div class="btnrow" style="margin-top:14px"><button class="btn red" data-md="req" data-r="${id}">Request clearance</button><button class="btn alt" data-md="close">Close</button></div>`);
+}
+function viewIncident(id){
+  const x=S.reports.find(r=>r.id===id);closeModal();showTab('cc');
+  setTimeout(()=>{map.flyTo(hazardPoint(x.place),9.5,{duration:1.2});setTimeout(()=>{const m=hazards.find(h=>h._rid===id);if(m)m.openPopup();},1300);},250);
+}
+$('#view-ri').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const id=+b.dataset.r,a=b.dataset.act;
+  if(a==='call')callModal(id);else if(a==='req')reqModal(id);else if(a==='view')viewIncident(id);else if(a==='track')trackModal(id);
+});
+$('#modal').addEventListener('click',e=>{
+  if(e.target.id==='modal'){closeModal();return;}
+  const b=e.target.closest('[data-md]');if(!b)return;const a=b.dataset.md;
+  if(a==='close')closeModal();else if(a==='send')sendRequest(+b.dataset.r);else if(a==='req')reqModal(+b.dataset.r);
+});
+
+/* ---------- boot ---------- */
+async function upgradeToRoadGeometry(){
+  /* Upgrade route risk calculations to real road lengths. */
+  try{
+    PA=await buildCorridorPath(['P','M']);
+    PB=await buildCorridorPath(['GN','Q','M']);
+  }catch(e){console.warn('Route path upgrade failed; keeping fallback paths.',e);}
+
+  /* Upgrade every simulated vehicle to the same road-following geometry. */
+  await Promise.all(V.map(async v=>{
+    const keepT=v.t,keepLoop=v.loopAt;
+    try{
+      const p=await buildRoadPath(v.pts);
+      v.orig=p;v.path=p;v.t=keepT;v.loopAt=keepLoop;
+      v.marker.setLatLng(posAt(v.path,v.t));
+    }catch(e){console.warn('Vehicle route upgrade failed for '+v.id,e);}
+  }));
+  computeRisks();applyHolds();recolor();renderQueue();renderBrief();updateTrack();updateKPI(700);renderRI();
+}
+computeRisks();applyHolds();recolor();
+renderFeed();renderQueue();renderBrief();updateTrack();updateKPI(1400);renderWeather();renderChips();renderRI();renderProc();
+requestAnimationFrame(frame);
+initBackend();
+loadRoadNetwork().then(upgradeToRoadGeometry).catch(e=>console.warn('Road geometry upgrade skipped:',e));
+</script>
+</body>
+</html>

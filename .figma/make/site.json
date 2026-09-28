@@ -1,0 +1,10 @@
+{
+  "description": "Optimizes logistics in North Eastern India with real-time GIS mapping, route planning, vehicle tracking, and incident reporting for efficient operations.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
