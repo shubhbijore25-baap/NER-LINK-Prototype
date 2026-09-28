@@ -17,8 +17,8 @@
 | Resource             | Link                                                                           |
 | -------------------- | ------------------------------------------------------------------------------ |
 | 📦 GitHub Repository | [NER-LINK-Prototype](https://github.com/shubhbijore25-baap/NER-LINK-Prototype) |
-
-
+| 🌐 Live Prototype    | https://beautiful-granita-8121fb.netlify.app/                                                           |
+| 🎥 Demo Video        |                                                |
 
 ---
 
